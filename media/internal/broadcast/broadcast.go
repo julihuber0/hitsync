@@ -111,7 +111,7 @@ func (b *Broadcaster) Start(gameID, trackID, sourcePath string) error {
 	b.mu.Unlock()
 
 	cmd := exec.CommandContext(s.ctx, b.cfg.FFmpegPath,
-		"-nostdin", "-hide_banner", "-loglevel", "warning", "-re", "-i", sourcePath,
+		"-nostdin", "-hide_banner", "-loglevel", "warning", "-probesize", "32k", "-analyzeduration", "0", "-re", "-i", sourcePath,
 		"-vn", "-c:a", "libopus", "-ar", "48000", "-ac", "2", "-page_duration", "20000", "-f", "ogg", "pipe:1")
 	cmd.Stdout = s.writer
 	if err := cmd.Start(); err != nil {

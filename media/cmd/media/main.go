@@ -49,7 +49,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /broadcast/{trackId}/preload", preloadHandler(log, c, fetcher, verifier))
 	mux.HandleFunc("POST /broadcast/{trackId}/prepare", prepareHandler(log, c, fetcher, verifier, b))
-	mux.HandleFunc("POST /broadcast/{trackId}/start", startHandler(log, c, verifier, b))
+	mux.HandleFunc("POST /broadcast/{trackId}/start", startHandler(log, c, fetcher, verifier, b))
 	mux.HandleFunc("POST /broadcast/{trackId}/stop", stopHandler(verifier, b))
 	mux.HandleFunc("GET /healthz", healthzHandler(cfg))
 
@@ -128,12 +128,18 @@ func prepareHandler(log *slog.Logger, c *cache.Cache, fetcher *upstream.Fetcher,
 			return
 		}
 		trackID := r.PathValue("trackId")
-		if err := fetcher.Ensure(trackID); err != nil {
-			log.Error("failed to cache broadcast source", "track_id", trackID, "error", err)
-			http.Error(w, "upstream fetch failed", http.StatusBadGateway)
-			return
+		if c.Has(trackID) {
+			c.Touch(trackID)
+		} else {
+			// Do not put cold playback behind a whole-file download. Start a
+			// background cache fill while Start feeds FFmpeg directly from
+			// Navidrome's streaming response.
+			go func() {
+				if err := fetcher.Ensure(trackID); err != nil {
+					log.Warn("failed to cache cold broadcast source", "track_id", trackID, "error", err)
+				}
+			}()
 		}
-		c.Touch(trackID)
 		if err := b.Prepare(r.Context(), gameID, trackID); err != nil {
 			log.Error("failed to prepare LiveKit broadcast", "game_id", gameID, "track_id", trackID, "error", err)
 			http.Error(w, "broadcast unavailable", http.StatusServiceUnavailable)
@@ -143,7 +149,7 @@ func prepareHandler(log *slog.Logger, c *cache.Cache, fetcher *upstream.Fetcher,
 	}
 }
 
-func startHandler(log *slog.Logger, c *cache.Cache, verifier *tokens.Verifier, b *broadcast.Broadcaster) http.HandlerFunc {
+func startHandler(log *slog.Logger, c *cache.Cache, fetcher *upstream.Fetcher, verifier *tokens.Verifier, b *broadcast.Broadcaster) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		gameID, ok := verifyBroadcast(r, verifier)
 		if !ok {
@@ -151,7 +157,19 @@ func startHandler(log *slog.Logger, c *cache.Cache, verifier *tokens.Verifier, b
 			return
 		}
 		trackID := r.PathValue("trackId")
-		if err := b.Start(gameID, trackID, c.Path(trackID)); err != nil {
+		source := c.Path(trackID)
+		if c.Has(trackID) {
+			c.Touch(trackID)
+		} else {
+			var err error
+			source, err = fetcher.StreamURL(trackID)
+			if err != nil {
+				log.Error("failed to create cold broadcast stream", "track_id", trackID, "error", err)
+				http.Error(w, "broadcast unavailable", http.StatusServiceUnavailable)
+				return
+			}
+		}
+		if err := b.Start(gameID, trackID, source); err != nil {
 			log.Error("failed to start LiveKit broadcast", "game_id", gameID, "track_id", trackID, "error", err)
 			http.Error(w, "broadcast unavailable", http.StatusServiceUnavailable)
 			return

@@ -81,6 +81,13 @@ func New(nav Navidrome, format string, bitrate int, c *cache.Cache, timeout time
 	}
 }
 
+// StreamURL returns an authenticated Navidrome stream URL for FFmpeg. Unlike
+// Ensure, it does not wait for an entire file to reach the local cache, so a
+// cold track can begin producing audio as soon as Navidrome starts responding.
+func (f *Fetcher) StreamURL(trackID string) (string, error) {
+	return f.nav.streamURL(trackID, f.format, f.bitrate)
+}
+
 // Ensure downloads trackID to the local cache once. Audio files are never
 // returned to a browser: the LiveKit publisher consumes the cached file.
 // Concurrent calls for the same track wait for the leader rather than causing
