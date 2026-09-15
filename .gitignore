@@ -1,6 +1,7 @@
 # Environment
 .env
 .env.dev
+livekit.yaml
 
 # Local dev support (docker-compose.dev.yml)
 /dev-music/*
