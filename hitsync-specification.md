@@ -51,8 +51,11 @@ origin, or public media-service port.
 
 Traefik terminates HTTPS for `APP_DOMAIN` and `LIVEKIT_DOMAIN`. LiveKit
 signalling is proxied to port 7880. WebRTC media is direct to the SFU on TCP
-7881 and UDP 50000-50100. The media worker is only on the internal Compose
-network and accepts authenticated control calls from the backend.
+7883 and UDP 51000-51100 — deliberately off LiveKit's defaults (7881 /
+50000-50100) so a second, independently-deployed LiveKit instance on the same
+host doesn't collide with this one on published host ports. The media worker
+is only on the internal Compose network and accepts authenticated control
+calls from the backend.
 
 `livekit.yaml` sets `rtc.use_external_ip: true` for a normal public VPS.
 Production deployments should add TURN when their topology requires it.

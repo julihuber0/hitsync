@@ -47,8 +47,12 @@ services:
       - livekitconfig:/run/hitsync-livekit
     ports:
       # WebRTC media must reach the SFU directly; Traefik only proxies 7880.
-      - "7881:7881/tcp"
-      - "50000-50100:50000-50100/udp"
+      # These must match rtc.tcp_port / rtc.port_range_* in livekit.yaml, and
+      # are deliberately non-default so a second LiveKit instance on the same
+      # host (e.g. another project's compose stack) doesn't collide with this
+      # one on 7881/50000-50100.
+      - "7883:7883/tcp"
+      - "51000-51100:51000-51100/udp"
     networks: [internal, proxy]
     labels:
       - traefik.enable=true

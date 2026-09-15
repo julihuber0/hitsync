@@ -28,7 +28,7 @@ backend starts FFmpeg; the same SFU publication is then heard by all players.
 - Traefik v2/v3 on a shared Docker network, with TLS enabled
 - Three DNS names pointing at Traefik: the app, the LiveKit signalling host,
   and (optionally) the Navidrome host you already use
-- Firewall access to UDP `50000-50100` and TCP `7881` for LiveKit media
+- Firewall access to UDP `51000-51100` and TCP `7883` for LiveKit media
 
 ## Quick start
 
@@ -78,9 +78,13 @@ Never reuse `LIVEKIT_API_SECRET`, `MEDIA_SHARED_SECRET`, or `JWT_SECRET`.
 ## Networking and TLS
 
 Traefik proxies HTTPS/WebSocket signalling from `LIVEKIT_DOMAIN` to port 7880.
-WebRTC media does **not** traverse Traefik: expose TCP 7881 and the UDP range
-50000-50100 directly to the Internet and open those ports in the VPS firewall.
+WebRTC media does **not** traverse Traefik: expose TCP 7883 and the UDP range
+51000-51100 directly to the Internet and open those ports in the VPS firewall.
 `livekit.yaml` enables external-IP discovery for this single-node deployment.
+These ports are deliberately off LiveKit's defaults (7881/50000-50100) so
+another LiveKit instance on the same host doesn't collide with this one; if
+you run more than two, give each its own non-overlapping TCP port and UDP
+range in both `livekit.yaml` and `docker-compose.yml`.
 
 If clients are behind restrictive networks, configure TURN for your domain in
 [`livekit.yaml`](livekit.yaml) and publish its port as described in the
@@ -95,7 +99,7 @@ docker compose ps
 ```
 
 For a game that cannot hear audio, first verify that the browser can open
-`wss://LIVEKIT_DOMAIN`, then confirm UDP `50000-50100` and TCP `7881` are
+`wss://LIVEKIT_DOMAIN`, then confirm UDP `51000-51100` and TCP `7883` are
 reachable. A LiveKit connection failure is visible in the browser console;
 media-worker/FFmpeg failures are in `docker compose logs media`.
 

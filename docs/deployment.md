@@ -20,17 +20,29 @@ Open these ports directly to the LiveKit container on the host:
 | Protocol | Port(s) | Reason |
 |---|---|---|
 | TCP | 80, 443 | Traefik / HTTPS / WebSocket signalling |
-| TCP | 7881 | WebRTC ICE/TCP fallback |
-| UDP | 50000-50100 | WebRTC media |
+| TCP | 7883 | WebRTC ICE/TCP fallback |
+| UDP | 51000-51100 | WebRTC media |
 
 For example, with UFW:
 
 ```sh
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
-sudo ufw allow 7881/tcp
-sudo ufw allow 50000:50100/udp
+sudo ufw allow 7883/tcp
+sudo ufw allow 51000:51100/udp
 ```
+
+These ports are intentionally off LiveKit's defaults (7881/50000-50100) so
+that a second, independently-managed LiveKit instance on the same host (e.g.
+from another project's Compose stack) doesn't collide with this one on the
+host's port bindings — Traefik routes both by hostname on 7880 internally, but
+the raw WebRTC TCP/UDP ports are published straight to the host and must be
+unique per LiveKit instance. If you deploy a third instance, give it its own
+non-overlapping TCP port and UDP range too, changed consistently in both
+`docker-compose.yml`'s `ports:` list and `rtc.tcp_port`/`rtc.port_range_*` in
+[`livekit.yaml`](../livekit.yaml) — the host and container ports must match
+exactly, since LiveKit advertises the container-side port in the ICE
+candidates it hands to browsers.
 
 If the server has a public IP that is not visible inside Docker, leave
 `rtc.use_external_ip: true` in [`livekit.yaml`](../livekit.yaml). For a more
@@ -91,7 +103,7 @@ secret storage.
   confirm `LIVEKIT_INTERNAL_URL`, API key, and API secret match the SFU.
 - **Track arrives but silence/no playback:** inspect FFmpeg errors in `media`
   logs and ensure the Navidrome track can be fetched by the worker.
-- **Works on LAN but not remotely:** check the UDP range, TCP 7881, DNS,
+- **Works on LAN but not remotely:** check the UDP range, TCP 7883, DNS,
   external-IP discovery, and firewall/NAT forwarding.
 - **Browser rejects audio:** use the in-app “Tap to enable sound” prompt; this
   is browser autoplay policy, not an MP3 preload failure.
