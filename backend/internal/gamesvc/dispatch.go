@@ -45,6 +45,12 @@ func dispatchMessage(mg *ManagedGame, c *ws.Conn, env ws.Envelope) {
 			mg.handleChallenge(c.PlayerID, p.SlotIndex)
 		}
 
+	case ws.TypeChallengePreview:
+		var p ws.ChallengePreviewPayload
+		if json.Unmarshal(env.Payload, &p) == nil {
+			mg.handleChallengePreview(c.PlayerID, p.SlotIndex)
+		}
+
 	case ws.TypePassChallenge:
 		mg.handlePassChallenge(c.PlayerID)
 

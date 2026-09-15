@@ -20,6 +20,7 @@ export default function GameBoard() {
 
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [challengeSlot, setChallengeSlot] = useState<number | null>(null);
+  const [stealMode, setStealMode] = useState(false);
   const [titleGuess, setTitleGuess] = useState<string | null>(null);
   const [artistGuess, setArtistGuess] = useState<string | null>(null);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
@@ -34,6 +35,7 @@ export default function GameBoard() {
   useEffect(() => {
     setSelectedSlot(null);
     setChallengeSlot(null);
+    setStealMode(false);
     setTitleGuess(null);
     setArtistGuess(null);
   }, [trackPrepare?.prepareId]);
@@ -68,16 +70,15 @@ export default function GameBoard() {
 
   const inPlacing = state.phase === "PLACING";
   const inChallenging = state.phase === "CHALLENGING";
-  // Outside a challenge, show the player's own established timeline. During
-  // a challenge the target timeline remains visible so its slots can be
-  // claimed. This prevents a player's starting card from appearing to change
-  // whenever the active player rotates.
-  const displayedTimeline = (inChallenging ? activePlayer : you)?.timeline ?? [];
-
   const youChallenged = you?.pendingChallengeSlot != null;
   const youPassed = state.currentTurn?.hasPassed?.includes(state.youId) ?? false;
   const alreadyActed = youChallenged || youPassed;
-  const canChallenge = inChallenging && !isActive && (you?.tokens ?? 0) > 0 && !alreadyActed;
+  const canSteal = inChallenging && !isActive && (you?.tokens ?? 0) > 0 && !alreadyActed;
+  const selectingSteal = canSteal && stealMode;
+  const otherPlayers = state.players.filter((player) => player.id !== state.youId);
+  const previews = state.players.flatMap((player) => player.pendingChallengePreviewSlot == null
+    ? []
+    : [{ playerId: player.id, name: player.name, colour: player.colour, slot: player.pendingChallengePreviewSlot }]);
 
   const confirmPlacement = () => {
     if (selectedSlot === null) return;
@@ -87,26 +88,24 @@ export default function GameBoard() {
   const confirmChallenge = () => {
     if (challengeSlot === null) return;
     socket?.challenge(challengeSlot);
+    setStealMode(false);
+  };
+
+  const selectChallengeSlot = (slot: number) => {
+    setChallengeSlot(slot);
+    socket?.previewChallenge(slot);
   };
 
   return (
     <div className="min-h-screen bg-bg flex flex-col lg:flex-row">
-      <div className="flex-1 flex flex-col gap-6 p-4">
+      <div className="flex-1 flex flex-col gap-5 p-4 min-w-0">
         <TopBar />
 
-        <div className="flex-1 flex flex-col items-center justify-center gap-6">
-          <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-2xl card-surface flex items-center justify-center overflow-hidden">
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative w-20 h-20 rounded-2xl card-surface flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 flex items-center justify-center gap-1">
               {[...Array(5)].map((_, i) => (
-                <span
-                  key={i}
-                  className="w-1.5 bg-accent/60 rounded-full animate-pulse"
-                  style={{
-                    height: `${20 + (i % 3) * 12}px`,
-                    animationDelay: `${i * 120}ms`,
-                    animationDuration: "1.2s",
-                  }}
-                />
+                <span key={i} className="w-1.5 bg-accent/60 rounded-full animate-pulse" style={{ height: `${20 + (i % 3) * 12}px`, animationDelay: `${i * 120}ms`, animationDuration: "1.2s" }} />
               ))}
             </div>
           </div>
@@ -123,90 +122,97 @@ export default function GameBoard() {
           {audioState === "error" && !autoplayBlocked && trackPrepare && (
             <div role="alert" className="flex items-center gap-3 text-sm text-danger">
               <span>{t("board.broadcastUnavailable")}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  readySentFor.current = null;
-                  void audioPlayer.prepare(trackPrepare.prepareId, trackPrepare.livekitUrl, trackPrepare.livekitToken)
-                    .then(() => {
-                      if (readySentFor.current !== trackPrepare.prepareId) {
-                        readySentFor.current = trackPrepare.prepareId;
-                        socket?.ready(trackPrepare.prepareId);
-                      }
-                    })
-                    .catch(() => setAudioState("error"));
-                }}
-                className="rounded-md bg-white/10 px-3 py-1.5 font-medium text-white hover:bg-white/20"
-              >
+              <button type="button" onClick={() => {
+                readySentFor.current = null;
+                void audioPlayer.prepare(trackPrepare.prepareId, trackPrepare.livekitUrl, trackPrepare.livekitToken)
+                  .then(() => {
+                    if (readySentFor.current !== trackPrepare.prepareId) {
+                      readySentFor.current = trackPrepare.prepareId;
+                      socket?.ready(trackPrepare.prepareId);
+                    }
+                  })
+                  .catch(() => setAudioState("error"));
+              }} className="rounded-md bg-white/10 px-3 py-1.5 font-medium text-white hover:bg-white/20">
                 {t("board.retryAudio")}
               </button>
             </div>
           )}
+        </div>
 
-          {autoplayBlocked && (
-            <button
-              onClick={() => {
-                audioPlayer.retryPlay();
-                setAutoplayBlocked(false);
-              }}
-              className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center text-xl font-semibold"
-            >
-              {t("board.tapToEnableSound")}
-            </button>
-          )}
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-white/60">{t("board.otherTimelines")}</h2>
+          <div className="grid gap-3 xl:grid-cols-2">
+            {otherPlayers.map((player) => {
+              const isStealTarget = selectingSteal && player.id === activePlayer?.id;
+              return (
+                <article key={player.id} className={`rounded-xl border p-3 ${player.id === activePlayer?.id ? "border-accent/40 bg-accent/5" : "border-white/10 bg-white/[0.02]"}`}>
+                  <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: player.colour }} />
+                    {player.name}
+                  </div>
+                  <Timeline
+                    timeline={player.timeline}
+                    mode={isStealTarget ? "challenge" : "view"}
+                    selectedSlot={isStealTarget ? challengeSlot : null}
+                    onSelectSlot={isStealTarget ? selectChallengeSlot : undefined}
+                    takenSlots={state.currentTurn?.challengeSlotsTaken ?? []}
+                    disabledSlot={player.id === activePlayer?.id ? state.currentTurn?.activePlacementSlot : null}
+                    placementSlot={player.id === activePlayer?.id ? state.currentTurn?.activePlacementSlot : null}
+                    previews={player.id === activePlayer?.id ? previews : []}
+                  />
+                </article>
+              );
+            })}
+          </div>
+        </section>
 
+        <section className="mt-auto rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+          <h2 className="text-base font-semibold">{t("board.yourTimeline")}</h2>
           <Timeline
-            timeline={displayedTimeline}
-            mode={inPlacing && isActive ? "place" : inChallenging && canChallenge ? "challenge" : "view"}
-            selectedSlot={inPlacing ? selectedSlot : challengeSlot}
-            onSelectSlot={inPlacing ? setSelectedSlot : setChallengeSlot}
-            takenSlots={state.currentTurn?.challengeSlotsTaken ?? []}
+            timeline={you?.timeline ?? []}
+            size="large"
+            mode={inPlacing && isActive ? "place" : "view"}
+            selectedSlot={inPlacing && isActive ? selectedSlot : null}
+            onSelectSlot={inPlacing && isActive ? setSelectedSlot : undefined}
+            placementSlot={isActive ? state.currentTurn?.activePlacementSlot : null}
           />
 
           {inPlacing && isActive && (
-            <div className="flex flex-col items-center gap-3 w-full max-w-md">
-              {trackPrepare?.guessOptions && (
-                <SongGuessPanel
-                  options={trackPrepare.guessOptions}
-                  titleGuess={titleGuess}
-                  artistGuess={artistGuess}
-                  onSelectTitle={setTitleGuess}
-                  onSelectArtist={setArtistGuess}
-                />
-              )}
-              <button
-                onClick={confirmPlacement}
-                disabled={selectedSlot === null}
-                className="bg-accent hover:brightness-110 transition-[filter] text-white font-semibold py-2.5 px-8 rounded-lg disabled:opacity-40"
-              >
+            <div className="flex flex-col items-center gap-3">
+              {trackPrepare?.guessOptions && <SongGuessPanel options={trackPrepare.guessOptions} titleGuess={titleGuess} artistGuess={artistGuess} onSelectTitle={setTitleGuess} onSelectArtist={setArtistGuess} />}
+              <button onClick={confirmPlacement} disabled={selectedSlot === null} className="bg-accent hover:brightness-110 transition-[filter] text-white font-semibold py-2.5 px-8 rounded-lg disabled:opacity-40">
                 {t("board.confirmPlacement")}
               </button>
             </div>
           )}
+        </section>
 
-          {inChallenging && (
-            <div className="flex items-center gap-3">
-              {canChallenge && (
-                <button
-                  onClick={confirmChallenge}
-                  disabled={challengeSlot === null}
-                  className="bg-accent hover:brightness-110 transition-[filter] text-white font-semibold py-2 px-6 rounded-lg disabled:opacity-40 text-sm"
-                >
-                  {t("board.challenge")}
+        {inChallenging && !isActive && (
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {canSteal && !stealMode && (
+              <button onClick={() => setStealMode(true)} className="bg-accent hover:brightness-110 transition-[filter] text-white font-semibold py-2 px-6 rounded-lg text-sm">
+                {t("board.steal")}
+              </button>
+            )}
+            {selectingSteal && (
+              <>
+                <p className="w-full text-center text-sm text-white/65">{t("board.stealing", { name: activePlayer?.name ?? "" })}</p>
+                <button onClick={confirmChallenge} disabled={challengeSlot === null} className="bg-accent hover:brightness-110 transition-[filter] text-white font-semibold py-2 px-6 rounded-lg disabled:opacity-40 text-sm">
+                  {t("board.submitSteal")}
                 </button>
-              )}
-              {!isActive && (
-                <button
-                  onClick={() => socket?.passChallenge()}
-                  disabled={youChallenged || alreadyActed}
-                  className="bg-white/10 hover:bg-white/20 transition-colors py-2 px-6 rounded-lg text-sm disabled:opacity-40"
-                >
-                  {t("board.pass")}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+              </>
+            )}
+            <button onClick={() => { setStealMode(false); socket?.passChallenge(); }} disabled={alreadyActed} className="bg-white/10 hover:bg-white/20 transition-colors py-2 px-6 rounded-lg text-sm disabled:opacity-40">
+              {t("board.pass")}
+            </button>
+          </div>
+        )}
+
+        {autoplayBlocked && (
+          <button onClick={() => { audioPlayer.retryPlay(); setAutoplayBlocked(false); }} className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center text-xl font-semibold">
+            {t("board.tapToEnableSound")}
+          </button>
+        )}
       </div>
 
       <div className="w-full lg:w-72 shrink-0 p-4 card-surface lg:rounded-none">

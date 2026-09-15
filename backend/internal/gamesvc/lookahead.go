@@ -1,6 +1,9 @@
 package gamesvc
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // usedAndPendingIDs returns every track id that must not be redrawn: used
 // this game, plus ones already resolved and waiting in the pipeline.
@@ -28,10 +31,32 @@ func (mg *ManagedGame) ensureLookahead() {
 				mg.resolving--
 				if err == nil && card != nil {
 					mg.candidates = append(mg.candidates, card)
+					mg.preloadCandidate(card)
 				}
 			})
 		}()
 	}
+}
+
+// preloadCandidate overlaps Navidrome download for an upcoming turn with the
+// current turn. A cache hit makes its later PREPARING phase only a LiveKit
+// publication setup instead of a full source download.
+func (mg *ManagedGame) preloadCandidate(candidate *Candidate) {
+	if candidate == nil {
+		return
+	}
+	token, err := mg.mediaSigner.Issue(mg.id, candidate.Card.TrackID, mg.cfg.MediaTTL)
+	if err != nil {
+		mg.log.Warn("failed to authorise audio preload", "game_id", mg.id, "track_id", candidate.Card.TrackID, "error", err)
+		return
+	}
+	go func(trackID, token string) {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		if err := mg.broadcaster.Preload(ctx, mg.id, trackID, token); err != nil {
+			mg.log.Warn("failed to preload audio source", "game_id", mg.id, "track_id", trackID, "error", err)
+		}
+	}(candidate.Card.TrackID, token)
 }
 
 // nextCandidate takes the head of the resolved pipeline, or falls back to a

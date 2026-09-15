@@ -244,6 +244,41 @@ func TestChallengeResolution(t *testing.T) {
 	})
 }
 
+func TestChallengePreviewIsRevisableAndDoesNotSpendToken(t *testing.T) {
+	g, ids := newTestGame(t, "Anna", "Bob")
+	g.Player(ids["Anna"]).Timeline = []Card{{Year: 1980}, {Year: 2000}}
+	startTurn(t, g, Card{TrackID: "t1", Year: 1990})
+	if _, err := g.PlaceCard(ids["Anna"], 0); err != nil {
+		t.Fatalf("place: %v", err)
+	}
+
+	before := g.Player(ids["Bob"]).Tokens
+	if err := g.PreviewChallenge(ids["Bob"], 1); err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	if got := g.Turn.ChallengePreviews[ids["Bob"]]; got != 1 {
+		t.Fatalf("preview slot = %d, want 1", got)
+	}
+	if got := g.Player(ids["Bob"]).Tokens; got != before {
+		t.Fatalf("preview spent token: got %d, want %d", got, before)
+	}
+	if err := g.PreviewChallenge(ids["Bob"], 2); err != nil {
+		t.Fatalf("replace preview: %v", err)
+	}
+	if got := g.Turn.ChallengePreviews[ids["Bob"]]; got != 2 {
+		t.Fatalf("revised preview slot = %d, want 2", got)
+	}
+	if _, err := g.Challenge(ids["Bob"], 1); err != nil {
+		t.Fatalf("final challenge: %v", err)
+	}
+	if _, ok := g.Turn.ChallengePreviews[ids["Bob"]]; ok {
+		t.Error("expected final challenge to clear preview")
+	}
+	if got := g.Player(ids["Bob"]).Tokens; got != before-1 {
+		t.Fatalf("final challenge tokens = %d, want %d", got, before-1)
+	}
+}
+
 func TestTokenAccounting(t *testing.T) {
 	g, ids := newTestGame(t, "Anna", "Bob", "Cara")
 	g.Player(ids["Anna"]).Timeline = []Card{{Year: 1980}}

@@ -175,6 +175,9 @@ export class GameSocket {
   challenge(slotIndex: number): void {
     this.send("challenge", { slotIndex });
   }
+  previewChallenge(slotIndex: number): void {
+    this.send("challenge_preview", { slotIndex });
+  }
   passChallenge(): void {
     this.send("pass_challenge", {});
   }

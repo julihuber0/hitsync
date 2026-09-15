@@ -12,6 +12,7 @@ import (
 )
 
 type Controller interface {
+	Preload(context.Context, string, string, string) error
 	Prepare(context.Context, string, string, string) error
 	Start(context.Context, string, string, string) error
 	Stop(context.Context, string, string, string) error
@@ -23,7 +24,15 @@ type Client struct {
 }
 
 func New(baseURL string) *Client {
-	return &Client{baseURL: strings.TrimRight(baseURL, "/"), http: &http.Client{Timeout: 20 * time.Second}}
+	// Individual control calls carry their own tighter context deadlines. Keep
+	// the client timeout long enough for a cold-cache preload to finish.
+	return &Client{baseURL: strings.TrimRight(baseURL, "/"), http: &http.Client{Timeout: 2 * time.Minute}}
+}
+
+// Preload asks the media worker to cache a source before its turn starts.
+// It deliberately does not create a LiveKit room or start FFmpeg.
+func (c *Client) Preload(ctx context.Context, gameID, trackID, token string) error {
+	return c.call(ctx, trackID, "preload", token)
 }
 
 func (c *Client) Prepare(ctx context.Context, gameID, trackID, token string) error {

@@ -216,6 +216,16 @@ func (mg *ManagedGame) handleChallenge(playerID string, slotIndex int) {
 	mg.broadcastState()
 }
 
+func (mg *ManagedGame) handleChallengePreview(playerID string, slotIndex int) {
+	if err := mg.g.PreviewChallenge(playerID, slotIndex); err != nil {
+		if c := mg.conns[playerID]; c != nil {
+			mg.sendError(c, "invalid_steal_preview", err.Error())
+		}
+		return
+	}
+	mg.broadcastState()
+}
+
 func (mg *ManagedGame) handlePassChallenge(playerID string) {
 	done, err := mg.g.PassChallenge(playerID)
 	if err != nil {

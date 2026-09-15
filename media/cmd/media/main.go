@@ -47,6 +47,7 @@ func main() {
 	}, log)
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("POST /broadcast/{trackId}/preload", preloadHandler(log, c, fetcher, verifier))
 	mux.HandleFunc("POST /broadcast/{trackId}/prepare", prepareHandler(log, c, fetcher, verifier, b))
 	mux.HandleFunc("POST /broadcast/{trackId}/start", startHandler(log, c, verifier, b))
 	mux.HandleFunc("POST /broadcast/{trackId}/stop", stopHandler(verifier, b))
@@ -75,6 +76,26 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(ctx)
+}
+
+// preloadHandler fills the local source cache ahead of a future turn. It does
+// not allocate a LiveKit publication, so several upcoming tracks can be
+// cached concurrently without creating idle rooms.
+func preloadHandler(log *slog.Logger, c *cache.Cache, fetcher *upstream.Fetcher, verifier *tokens.Verifier) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := verifyBroadcast(r, verifier); !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		trackID := r.PathValue("trackId")
+		if err := fetcher.Ensure(trackID); err != nil {
+			log.Warn("failed to preload broadcast source", "track_id", trackID, "error", err)
+			http.Error(w, "upstream fetch failed", http.StatusBadGateway)
+			return
+		}
+		c.Touch(trackID)
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
 
 func parseLevel(s string) slog.Level {

@@ -72,8 +72,11 @@ type Turn struct {
 	Order []string
 
 	Challenges map[string]int // playerID -> claimed slot
-	Passed     map[string]bool
-	Spent      map[string]int // playerID -> tokens spent challenging this turn
+	// ChallengePreviews are revisable, public slot selections. They do not
+	// spend a token or count as an action until Challenge is called.
+	ChallengePreviews map[string]int
+	Passed            map[string]bool
+	Spent             map[string]int // playerID -> tokens spent challenging this turn
 }
 
 // Reveal is the outcome of resolving a turn (§8.5 REVEALING, §8.8).

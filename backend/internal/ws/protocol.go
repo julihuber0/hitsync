@@ -14,19 +14,20 @@ type Envelope struct {
 
 // Client -> server message types.
 const (
-	TypeHello          = "hello"
-	TypePing           = "ping"
-	TypeReady          = "ready"
-	TypeUpdateSettings = "update_settings"
-	TypeStartGame      = "start_game"
-	TypePlaceCard      = "place_card"
-	TypeChallenge      = "challenge"
-	TypePassChallenge  = "pass_challenge"
-	TypeSkipTrack      = "skip_track"
-	TypeKickPlayer     = "kick_player"
-	TypeEndGame        = "end_game"
-	TypePlayAgain      = "play_again"
-	TypeLeave          = "leave"
+	TypeHello            = "hello"
+	TypePing             = "ping"
+	TypeReady            = "ready"
+	TypeUpdateSettings   = "update_settings"
+	TypeStartGame        = "start_game"
+	TypePlaceCard        = "place_card"
+	TypeChallenge        = "challenge"
+	TypeChallengePreview = "challenge_preview"
+	TypePassChallenge    = "pass_challenge"
+	TypeSkipTrack        = "skip_track"
+	TypeKickPlayer       = "kick_player"
+	TypeEndGame          = "end_game"
+	TypePlayAgain        = "play_again"
+	TypeLeave            = "leave"
 )
 
 // Server -> client message types.
@@ -78,6 +79,12 @@ type PlaceCardPayload struct {
 
 // ChallengePayload claims a slot during CHALLENGING.
 type ChallengePayload struct {
+	SlotIndex int `json:"slotIndex"`
+}
+
+// ChallengePreviewPayload shares a player's revisable intended steal slot.
+// It never spends a token; TypeChallenge is the final submission.
+type ChallengePreviewPayload struct {
 	SlotIndex int `json:"slotIndex"`
 }
 

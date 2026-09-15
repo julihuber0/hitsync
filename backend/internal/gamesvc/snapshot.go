@@ -16,14 +16,15 @@ func cardView(c game.Card) CardView {
 
 // PlayerView is one player's entry in the state snapshot (§13.3).
 type PlayerView struct {
-	ID                   string     `json:"id"`
-	Name                 string     `json:"name"`
-	Colour               string     `json:"colour"`
-	Connected            bool       `json:"connected"`
-	IsHost               bool       `json:"isHost"`
-	Tokens               int        `json:"tokens"`
-	Timeline             []CardView `json:"timeline"`
-	PendingChallengeSlot *int       `json:"pendingChallengeSlot"`
+	ID                          string     `json:"id"`
+	Name                        string     `json:"name"`
+	Colour                      string     `json:"colour"`
+	Connected                   bool       `json:"connected"`
+	IsHost                      bool       `json:"isHost"`
+	Tokens                      int        `json:"tokens"`
+	Timeline                    []CardView `json:"timeline"`
+	PendingChallengeSlot        *int       `json:"pendingChallengeSlot"`
+	PendingChallengePreviewSlot *int       `json:"pendingChallengePreviewSlot"`
 }
 
 // SettingsView mirrors game.Settings for the wire (§13.3).
@@ -79,6 +80,10 @@ func (mg *ManagedGame) buildState(forPlayerID string) StatePayload {
 			pv.Timeline[i] = cardView(c)
 		}
 		if g.Turn != nil {
+			if slot, ok := g.Turn.ChallengePreviews[p.ID]; ok {
+				s := slot
+				pv.PendingChallengePreviewSlot = &s
+			}
 			if slot, ok := g.Turn.Challenges[p.ID]; ok {
 				if p.ID == forPlayerID || g.Phase == game.PhaseRevealing || g.Phase == game.PhaseGameOver {
 					s := slot
@@ -96,7 +101,7 @@ func (mg *ManagedGame) buildState(forPlayerID string) StatePayload {
 			ChallengeSlotsTaken:      make([]int, 0),
 			HasPassed:                make([]string, 0),
 		}
-		if g.Turn.PlacementSubmitted && (forPlayerID == g.Turn.ActivePlayerID || g.Phase == game.PhaseRevealing || g.Phase == game.PhaseGameOver) {
+		if g.Turn.PlacementSubmitted {
 			slot := g.Turn.PlacementSlot
 			ct.ActivePlacementSlot = &slot
 		}

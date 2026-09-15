@@ -19,6 +19,7 @@ export interface PlayerView {
   tokens: number;
   timeline: CardView[];
   pendingChallengeSlot: number | null;
+  pendingChallengePreviewSlot: number | null;
 }
 
 export interface CurrentTurnView {

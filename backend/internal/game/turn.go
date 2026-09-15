@@ -59,14 +59,15 @@ func (g *Game) BeginTurn(track Card) error {
 	}
 	g.Phase = PhasePreparing
 	g.Turn = &Turn{
-		Number:         g.currentTurnNumber,
-		ActivePlayerID: active.ID,
-		Track:          track,
-		PlacementSlot:  -2, // sentinel: not yet submitted
-		Order:          g.seatOrderFrom(g.ActivePlayerIdx),
-		Challenges:     map[string]int{},
-		Passed:         map[string]bool{},
-		Spent:          map[string]int{},
+		Number:            g.currentTurnNumber,
+		ActivePlayerID:    active.ID,
+		Track:             track,
+		PlacementSlot:     -2, // sentinel: not yet submitted
+		Order:             g.seatOrderFrom(g.ActivePlayerIdx),
+		Challenges:        map[string]int{},
+		ChallengePreviews: map[string]int{},
+		Passed:            map[string]bool{},
+		Spent:             map[string]int{},
 	}
 	g.UsedTrackIDs[track.TrackID] = true
 	g.TracksUsedCount++
@@ -148,6 +149,36 @@ func (g *Game) anyChallengerHasTokens() bool {
 	return false
 }
 
+// PreviewChallenge records a player's currently selected alternative slot.
+// The preview remains public and can be changed freely until final submission.
+func (g *Game) PreviewChallenge(playerID string, slotIndex int) error {
+	if g.Phase != PhaseChallenging {
+		return ErrWrongPhase
+	}
+	if playerID == g.Turn.ActivePlayerID {
+		return ErrIsActivePlayer
+	}
+	p := g.Player(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if _, done := g.Turn.Challenges[playerID]; done || g.Turn.Passed[playerID] {
+		return ErrAlreadyActed
+	}
+	if p.Tokens <= 0 {
+		return ErrNoTokens
+	}
+	n := len(g.ActivePlayer().Timeline)
+	if slotIndex < 0 || slotIndex > n {
+		return ErrInvalidSlot
+	}
+	if slotIndex == g.Turn.PlacementSlot {
+		return ErrSlotIsActiveSlot
+	}
+	g.Turn.ChallengePreviews[playerID] = slotIndex
+	return nil
+}
+
 // Challenge records a non-active player's slot claim, spending one token
 // immediately (§8.5 CHALLENGING, §8.8). Returns whether every eligible
 // player has now challenged or passed, so the phase can end immediately.
@@ -186,6 +217,7 @@ func (g *Game) Challenge(playerID string, slotIndex int) (phaseComplete bool, er
 	}
 
 	p.Tokens--
+	delete(g.Turn.ChallengePreviews, playerID)
 	g.Turn.Challenges[playerID] = slotIndex
 	g.Turn.Spent[playerID]++
 	done := g.allEligibleDone()
@@ -213,6 +245,7 @@ func (g *Game) PassChallenge(playerID string) (phaseComplete bool, err error) {
 		return false, ErrAlreadyActed
 	}
 	g.Turn.Passed[playerID] = true
+	delete(g.Turn.ChallengePreviews, playerID)
 	done := g.allEligibleDone()
 	if done {
 		g.finishChallenging()

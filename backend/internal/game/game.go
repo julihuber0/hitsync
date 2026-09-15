@@ -110,6 +110,7 @@ func (g *Game) RemovePlayer(playerID string, minPlayers int) (endedNoWinner bool
 
 	if g.Turn != nil {
 		delete(g.Turn.Challenges, playerID)
+		delete(g.Turn.ChallengePreviews, playerID)
 		delete(g.Turn.Passed, playerID)
 	}
 

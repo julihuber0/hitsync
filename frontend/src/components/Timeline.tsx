@@ -4,27 +4,33 @@ import type { CardView } from "../ws/protocol";
 interface Props {
   timeline: CardView[];
   mode: "view" | "place" | "challenge";
+  size?: "default" | "large";
   selectedSlot?: number | null;
   onSelectSlot?: (slot: number) => void;
   takenSlots?: number[];
   disabledSlot?: number | null;
+  placementSlot?: number | null;
   highlightSlot?: number | null;
   highlightCorrect?: boolean;
+  previews?: Array<{ playerId: string; name: string; colour: string; slot: number }>;
 }
 
 export default function Timeline({
   timeline,
   mode,
+  size = "default",
   selectedSlot = null,
   onSelectSlot,
   takenSlots = [],
   disabledSlot = null,
+  placementSlot = null,
   highlightSlot = null,
   highlightCorrect,
+  previews = [],
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
-  const compact = timeline.length >= 8;
+  const compact = size === "default" && timeline.length >= 8;
 
   useEffect(() => {
     selectedRef.current?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
@@ -53,10 +59,23 @@ export default function Timeline({
     const isSelected = selectedSlot === slot;
     const isTaken = takenSlots.includes(slot);
     const isDisabled = disabledSlot === slot;
+    const isPlacement = placementSlot === slot;
     const clickable = slotClickable(slot);
+    const slotPreviews = previews.filter((preview) => preview.slot === slot);
 
     if (mode === "view") {
-      return <div key={`slot-${slot}`} className="w-2 shrink-0" />;
+      return (
+        <div key={`slot-${slot}`} className="relative w-3 h-20 sm:h-24 shrink-0">
+          {slotPreviews.length > 0 && (
+            <span className="absolute -top-1 left-1/2 flex -translate-x-1/2 gap-0.5" aria-label={slotPreviews.map((p) => p.name).join(", ")}>
+              {slotPreviews.map((preview) => (
+                <span key={preview.playerId} className="w-2.5 h-2.5 rounded-full ring-2 ring-bg" style={{ backgroundColor: preview.colour }} title={preview.name} />
+              ))}
+            </span>
+          )}
+          {isPlacement && <span className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full bg-accent" aria-label="submitted placement" />}
+        </div>
+      );
     }
 
     return (
@@ -80,6 +99,14 @@ export default function Timeline({
         }`}
       >
         {mode === "challenge" && isTaken && <span className="absolute inset-0 flex items-center justify-center text-xs">🪙</span>}
+        {slotPreviews.length > 0 && (
+          <span className="absolute -top-1 left-1/2 flex -translate-x-1/2 gap-0.5" aria-label={slotPreviews.map((p) => p.name).join(", ")}>
+            {slotPreviews.map((preview) => (
+              <span key={preview.playerId} className="w-2.5 h-2.5 rounded-full ring-2 ring-bg" style={{ backgroundColor: preview.colour }} title={preview.name} />
+            ))}
+          </span>
+        )}
+        {isPlacement && <span className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full bg-accent" aria-label="submitted placement" />}
       </button>
     );
   };
@@ -98,7 +125,7 @@ export default function Timeline({
           <div key={card.trackId + i} className="flex items-center gap-1">
             <div
               className={`shrink-0 card-surface flex flex-col items-center justify-center transition-all duration-200 ease-game ${
-                compact ? "w-14 h-20" : "w-20 h-28"
+                compact ? "w-14 h-20" : size === "large" ? "w-24 h-32 sm:w-28 sm:h-36" : "w-20 h-28"
               } ${highlightSlot === i && highlightCorrect === true ? "!border-success border-2" : ""} ${
                 highlightSlot === i && highlightCorrect === false ? "!border-danger border-2" : ""
               }`}
