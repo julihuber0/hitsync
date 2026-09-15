@@ -17,7 +17,7 @@ services:
     image: busybox:1.37
     restart: "no"
     env_file: [.env]
-    command: ["sh", "-ec", "printf '%s: %s\\n' \"$$LIVEKIT_API_KEY\" \"$$LIVEKIT_API_SECRET\" > /config/keys.txt"]
+    command: ["sh", "-ec", "printf '%s: %s\\n' \"$$LIVEKIT_API_KEY\" \"$$LIVEKIT_API_SECRET\" > /config/keys.txt && chmod 600 /config/keys.txt"]
     volumes: [livekitconfig:/config]
     networks: [internal]
 
