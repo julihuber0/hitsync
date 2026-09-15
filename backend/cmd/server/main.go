@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -80,7 +81,7 @@ func main() {
 		PlayerReconnectGrace: cfg.PlayerReconnectGrace, LobbyIdleTimeout: cfg.LobbyIdleTimeout,
 		SkipRateLimit:      10 * time.Second,
 		YearLookaheadDepth: cfg.YearLookaheadDepth, YearLookupTimeout: cfg.YearLookupTimeout,
-		AppDomain: cfg.AppDomain, MediaBaseURL: "https://" + cfg.MediaDomain, MediaTTL: 30 * time.Minute,
+		AppDomain: cfg.AppDomain, MediaBaseURL: cfg.MediaOrigin(), MediaTTL: 30 * time.Minute,
 	}
 	manager := gamesvc.NewManager(gsCfg, st, trackSource, mediaSigner, issuer, log)
 	manager.RehydrateFromSnapshots(ctx)
@@ -89,7 +90,7 @@ func main() {
 	api := httpapi.New(cfg, issuer, st, manager, syncer, resolver, mbClient, nav, log)
 
 	srv := &http.Server{
-		Addr:              ":8080",
+		Addr:              cfg.HTTPAddr,
 		Handler:           api.Router(),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -127,8 +128,17 @@ func parseLevel(s string) slog.Level {
 // runHealthcheckProbe backs the Dockerfile HEALTHCHECK, which execs the
 // server binary itself rather than requiring curl in a distroless image.
 func runHealthcheckProbe() {
+	addr := ":8080"
+	if cfg, err := config.Load(); err == nil {
+		addr = cfg.HTTPAddr
+	}
+	host := "localhost" + addr
+	if !strings.HasPrefix(addr, ":") {
+		host = addr
+	}
+
 	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get("http://localhost:8080/healthz")
+	resp, err := client.Get("http://" + host + "/healthz")
 	if err != nil {
 		os.Exit(1)
 	}

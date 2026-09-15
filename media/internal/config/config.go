@@ -30,6 +30,12 @@ type Config struct {
 	MediaTLSKey     string `env:"MEDIA_TLS_KEY_FILE" envDefault:""`
 
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
+
+	// HTTPAddr is not part of the spec's env var table; it exists so local
+	// dev (docs/local-development.md) can run the media service on a free
+	// port without editing code, since the container always exposes 8090
+	// either way.
+	HTTPAddr string `env:"MEDIA_HTTP_ADDR" envDefault:":8090"`
 }
 
 // Load parses and validates the media service configuration.
@@ -72,4 +78,25 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid configuration:\n  - %s", strings.Join(errs, "\n  - "))
 	}
 	return nil
+}
+
+// isLocalDomain reports whether domain (host, optionally with :port) refers
+// to the local machine, so local dev can run over plain HTTP without a
+// certificate.
+func isLocalDomain(domain string) bool {
+	host := domain
+	if i := strings.IndexByte(host, ':'); i >= 0 {
+		host = host[:i]
+	}
+	return host == "localhost" || host == "127.0.0.1" || strings.HasSuffix(host, ".localhost")
+}
+
+// AppOrigin returns the app's own origin, e.g. "https://hitsync.example.com"
+// in production or "http://localhost:5173" in local dev, for the media
+// service's CORS header.
+func (c *Config) AppOrigin() string {
+	if isLocalDomain(c.AppDomain) {
+		return "http://" + c.AppDomain
+	}
+	return "https://" + c.AppDomain
 }

@@ -16,6 +16,15 @@ came out, and place it on their personal timeline.
 Hitsync builds and runs four containers of its own — `frontend`, `backend`, `media`, `postgres` —
 and expects Navidrome and Traefik to already exist.
 
+**Further reading:**
+
+- [`docs/deployment.md`](docs/deployment.md) — a full walkthrough of deploying this to a fresh VPS,
+  including standing up Traefik if you don't already have it, DNS, backups, updates, and
+  deployment-specific troubleshooting.
+- [`docs/local-development.md`](docs/local-development.md) — running the backend, media service,
+  and frontend natively with hot reload for fast iteration, instead of rebuilding Docker images on
+  every change.
+
 ## Quickstart
 
 ```sh
@@ -254,7 +263,9 @@ your library, or you've excluded a very large chunk of the library in `/admin` �
 
 ```
 hitsync/
-├── docker-compose.yml, .env.example, Makefile
+├── docker-compose.yml, .env.example, Makefile      — production stack
+├── docker-compose.dev.yml, .env.dev.example        — local-dev support services only (docs/local-development.md)
+├── docs/                                            — deployment and local-dev guides
 ├── backend/    — Go: REST API, WebSocket hub, game manager, rules engine, Navidrome/MusicBrainz clients
 ├── media/      — Go: dedicated audio-streaming service with its own MP3 cache
 └── frontend/   — React + TypeScript + Vite + Tailwind SPA, served by nginx

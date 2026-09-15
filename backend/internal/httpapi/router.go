@@ -12,7 +12,7 @@ import (
 func (a *API) Router() http.Handler {
 	r := chi.NewRouter()
 	r.Use(jsonBodyLimit)
-	r.Use(cors("https://" + a.cfg.AppDomain))
+	r.Use(cors(a.cfg.AppOrigin()))
 
 	r.Get("/healthz", a.handleHealthz)
 

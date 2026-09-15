@@ -1,0 +1,47 @@
+# Local development support services only — NOT used in production.
+# See docs/local-development.md. Runs Postgres (and optionally a throwaway
+# Navidrome) on host ports so backend/media/frontend can run natively with
+# hot reload, outside Docker, against them.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d
+#   docker compose -f docker-compose.dev.yml --profile navidrome up -d   # + Navidrome
+
+name: hitsync-dev
+
+volumes:
+  pgdata-dev:
+  navidrome-dev-data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hitsync
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: hitsync
+    ports:
+      - "5432:5432"
+    volumes: [pgdata-dev:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hitsync"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Optional: a throwaway Navidrome pointed at a local folder of test MP3s,
+  # for exercising the real library sync / playback path without touching
+  # your real music server. Only started with `--profile navidrome`.
+  navidrome:
+    image: deluan/navidrome:latest
+    restart: unless-stopped
+    profiles: [navidrome]
+    ports:
+      - "4533:4533"
+    environment:
+      ND_LOGLEVEL: info
+      ND_SESSIONTIMEOUT: 24h
+    volumes:
+      - navidrome-dev-data:/data
+      - ./dev-music:/music:ro

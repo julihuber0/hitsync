@@ -48,7 +48,7 @@ func main() {
 	mux.HandleFunc("GET /time", timeHandler)
 
 	srv := &http.Server{
-		Addr:              ":8090",
+		Addr:              cfg.HTTPAddr,
 		Handler:           mux,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -100,7 +100,7 @@ func streamHandler(log *slog.Logger, cfg *config.Config, c *cache.Cache, fetcher
 			return
 		}
 
-		w.Header().Set("Access-Control-Allow-Origin", "https://"+cfg.AppDomain)
+		w.Header().Set("Access-Control-Allow-Origin", cfg.AppOrigin())
 		w.Header().Set("Cross-Origin-Resource-Policy", "cross-origin")
 		w.Header().Set("Cache-Control", "private, max-age=3600")
 

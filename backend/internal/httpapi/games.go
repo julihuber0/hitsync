@@ -18,7 +18,7 @@ func (a *API) handleConfig(w http.ResponseWriter, r *http.Request) {
 		"defaultTargetCards": a.cfg.DefaultTargetCards,
 		"defaultStartTokens": a.cfg.DefaultStartTokens,
 		"songGuessAvailable": a.cfg.RuleEnableSongGuess,
-		"mediaBaseUrl":       "https://" + a.cfg.MediaDomain,
+		"mediaBaseUrl":       a.cfg.MediaOrigin(),
 	})
 }
 

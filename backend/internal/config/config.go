@@ -17,8 +17,13 @@ type Config struct {
 	TraefikNetwork      string `env:"TRAEFIK_NETWORK" envDefault:"proxy"`
 	TraefikEntrypoint   string `env:"TRAEFIK_ENTRYPOINT" envDefault:"websecure"`
 	TraefikCertResolver string `env:"TRAEFIK_CERTRESOLVER" envDefault:"letsencrypt"`
-	LogLevel            string `env:"LOG_LEVEL" envDefault:"info"`
-	TZ                  string `env:"TZ" envDefault:"Europe/Berlin"`
+	// HTTPAddr is not part of the spec's env var table; it exists so local
+	// dev (docs/local-development.md) can run the backend on a free port
+	// without editing code, since the container always exposes 8080 either
+	// way.
+	HTTPAddr string `env:"HTTP_ADDR" envDefault:":8080"`
+	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
+	TZ       string `env:"TZ" envDefault:"Europe/Berlin"`
 
 	// Secrets
 	AppAccessCode     string `env:"APP_ACCESS_CODE,required" secret:"true"`
@@ -143,6 +148,36 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid configuration:\n  - %s", strings.Join(errs, "\n  - "))
 	}
 	return nil
+}
+
+// isLocalDomain reports whether domain (host, optionally with :port) refers
+// to the local machine, so local dev can run over plain HTTP/WS without a
+// certificate.
+func isLocalDomain(domain string) bool {
+	host := domain
+	if i := strings.IndexByte(host, ':'); i >= 0 {
+		host = host[:i]
+	}
+	return host == "localhost" || host == "127.0.0.1" || strings.HasSuffix(host, ".localhost")
+}
+
+func httpSchemeFor(domain string) string {
+	if isLocalDomain(domain) {
+		return "http"
+	}
+	return "https"
+}
+
+// AppOrigin returns the app's own origin, e.g. "https://hitsync.example.com"
+// in production or "http://localhost:5173" in local dev.
+func (c *Config) AppOrigin() string {
+	return httpSchemeFor(c.AppDomain) + "://" + c.AppDomain
+}
+
+// MediaOrigin returns the media service's origin, following the same
+// local-domain-implies-plain-HTTP rule as AppOrigin.
+func (c *Config) MediaOrigin() string {
+	return httpSchemeFor(c.MediaDomain) + "://" + c.MediaDomain
 }
 
 // Redacted returns a copy suitable for logging, with secret fields masked.

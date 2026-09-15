@@ -19,6 +19,7 @@ func testAPI() *API {
 		JWTSecret:     "a-very-secret-key-that-is-32chars!!",
 		MinPlayers:    2, MaxPlayers: 12, DefaultTargetCards: 10, DefaultStartTokens: 2,
 		RuleEnableSongGuess: true,
+		AppDomain:           "hitsync.example.com",
 		MediaDomain:         "media.example.com",
 	}
 	return &API{
@@ -68,6 +69,21 @@ func TestHandleAccess(t *testing.T) {
 	}
 	if !found {
 		t.Error("expected hs_access cookie to be set")
+	}
+}
+
+func TestHandleAccessCookieNotSecureOnLocalDomain(t *testing.T) {
+	a := testAPI()
+	a.cfg.AppDomain = "localhost:5173"
+
+	rr := doJSON(t, a.handleAccess, http.MethodPost, "/api/auth/access", accessRequest{Code: "letmein"})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == accessCookieName && c.Secure {
+			t.Error("expected access cookie to NOT be Secure on a local dev domain, or the browser will refuse to store it over plain HTTP")
+		}
 	}
 }
 

@@ -3,6 +3,7 @@ package httpapi
 import (
 	"crypto/subtle"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -34,13 +35,13 @@ func (a *API) handleAccess(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Could not issue session.")
 		return
 	}
-	setCookie(w, accessCookieName, token, accessTokenTTL)
+	setCookie(w, accessCookieName, token, accessTokenTTL, a.cookieSecure())
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 // handleLogout implements POST /api/auth/logout.
 func (a *API) handleLogout(w http.ResponseWriter, r *http.Request) {
-	clearCookie(w, accessCookieName)
+	clearCookie(w, accessCookieName, a.cookieSecure())
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -65,13 +66,13 @@ func (a *API) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Could not issue session.")
 		return
 	}
-	setCookie(w, adminCookieName, token, adminTokenTTL)
+	setCookie(w, adminCookieName, token, adminTokenTTL, a.cookieSecure())
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 // handleAdminLogout implements POST /api/admin/logout.
 func (a *API) handleAdminLogout(w http.ResponseWriter, r *http.Request) {
-	clearCookie(w, adminCookieName)
+	clearCookie(w, adminCookieName, a.cookieSecure())
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -79,25 +80,34 @@ func constantTimeEqual(a, b string) bool {
 	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
 }
 
-func setCookie(w http.ResponseWriter, name, value string, ttl time.Duration) {
+// cookieSecure reports whether the Secure cookie attribute should be set.
+// It mirrors AppOrigin's scheme: true in production (HTTPS via Traefik),
+// false only when APP_DOMAIN is a local dev address — browsers refuse to
+// store a Secure cookie set over plain HTTP at all, which would otherwise
+// make the access gate impossible to pass in local dev (§11.1, §11.3).
+func (a *API) cookieSecure() bool {
+	return strings.HasPrefix(a.cfg.AppOrigin(), "https://")
+}
+
+func setCookie(w http.ResponseWriter, name, value string, ttl time.Duration, secure bool) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    value,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(ttl.Seconds()),
 	})
 }
 
-func clearCookie(w http.ResponseWriter, name string) {
+func clearCookie(w http.ResponseWriter, name string, secure bool) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
