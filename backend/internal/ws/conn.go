@@ -42,10 +42,12 @@ type Handler interface {
 }
 
 // Serve upgrades the request and runs the connection's read/write pumps
-// until it closes. Blocks until the connection ends.
-func Serve(w http.ResponseWriter, r *http.Request, allowedOrigin string, handler Handler, log *slog.Logger) {
+// until it closes. Blocks until the connection ends. allowedOriginHost is a
+// bare host (no scheme), e.g. "app.example.com" (§11.4: "Origin check on the
+// WebSocket upgrade against APP_DOMAIN").
+func Serve(w http.ResponseWriter, r *http.Request, allowedOriginHost string, handler Handler, log *slog.Logger) {
 	wsConn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		OriginPatterns: []string{allowedOrigin},
+		OriginPatterns: []string{allowedOriginHost},
 	})
 	if err != nil {
 		return

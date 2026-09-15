@@ -56,7 +56,7 @@ func (a *API) Router() http.Handler {
 	})
 
 	r.Get("/ws", func(w http.ResponseWriter, r *http.Request) {
-		ws.Serve(w, r, "https://"+a.cfg.AppDomain, a.manager, a.log)
+		ws.Serve(w, r, a.cfg.AppDomain, a.manager, a.log)
 	})
 
 	return r
