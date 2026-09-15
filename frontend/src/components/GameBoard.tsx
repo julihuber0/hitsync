@@ -63,7 +63,7 @@ export default function GameBoard() {
   const inChallenging = state.phase === "CHALLENGING";
 
   const youChallenged = you?.pendingChallengeSlot != null;
-  const youPassed = state.currentTurn?.hasPassed.includes(state.youId) ?? false;
+  const youPassed = state.currentTurn?.hasPassed?.includes(state.youId) ?? false;
   const alreadyActed = youChallenged || youPassed;
   const canChallenge = inChallenging && !isActive && (you?.tokens ?? 0) > 0 && !alreadyActed;
 

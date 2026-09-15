@@ -93,6 +93,8 @@ func (mg *ManagedGame) buildState(forPlayerID string) StatePayload {
 	if g.Turn != nil {
 		ct := &CurrentTurnView{
 			ActivePlacementSubmitted: g.Turn.PlacementSubmitted,
+			ChallengeSlotsTaken:      make([]int, 0),
+			HasPassed:                make([]string, 0),
 		}
 		if g.Turn.PlacementSubmitted && (forPlayerID == g.Turn.ActivePlayerID || g.Phase == game.PhaseRevealing || g.Phase == game.PhaseGameOver) {
 			slot := g.Turn.PlacementSlot
