@@ -1,0 +1,23 @@
+{
+  "id": "aaaaaaaa-0000-0000-0000-000000000001",
+  "releases": [
+    {
+      "id": "rel-compilation-1",
+      "date": "2004-06-01",
+      "release-group": {
+        "id": "rg-compilation-1",
+        "first-release-date": "2004-06-01",
+        "secondary-types": ["Compilation"]
+      }
+    },
+    {
+      "id": "rel-compilation-2",
+      "date": "1999-01-01",
+      "release-group": {
+        "id": "rg-compilation-2",
+        "first-release-date": "1999-01-01",
+        "secondary-types": ["Compilation"]
+      }
+    }
+  ]
+}

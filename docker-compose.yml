@@ -1,0 +1,100 @@
+name: hitsync
+
+networks:
+  proxy:
+    external: true
+    name: ${TRAEFIK_NETWORK:-proxy}
+  internal:
+    driver: bridge
+
+volumes:
+  pgdata:
+  mediacache:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hitsync}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      POSTGRES_DB: ${POSTGRES_DB:-hitsync}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hitsync}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 512M }
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: [.env]
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [internal, proxy]
+    healthcheck:
+      test: ["CMD", "/app/server", "-healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits: { memory: 512M, cpus: "2" }
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-proxy}
+      - traefik.http.routers.hitsync-api.rule=Host(`${APP_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/ws`))
+      - traefik.http.routers.hitsync-api.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.hitsync-api.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      - traefik.http.routers.hitsync-api.priority=20
+      - traefik.http.services.hitsync-api.loadbalancer.server.port=8080
+
+  media:
+    build: ./media
+    restart: unless-stopped
+    env_file: [.env]
+    # Escape hatch (§3.2, off by default): to publish the media service
+    # directly on a host port, uncomment the next two lines (and set
+    # MEDIA_DIRECT_PORT, MEDIA_TLS_CERT_FILE, MEDIA_TLS_KEY_FILE in .env) —
+    # see the README's "Direct port" section for the mixed-content caveat.
+    # ports:
+    #   - "${MEDIA_DIRECT_PORT}:8090"
+    volumes: [mediacache:/cache]
+    networks: [internal, proxy]
+    deploy:
+      resources:
+        limits: { memory: 256M, cpus: "1" }
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-proxy}
+      - traefik.http.routers.hitsync-media.rule=Host(`${MEDIA_DOMAIN}`)
+      - traefik.http.routers.hitsync-media.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.hitsync-media.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      - traefik.http.services.hitsync-media.loadbalancer.server.port=8090
+      # stream bytes through instead of buffering them
+      - traefik.http.middlewares.hitsync-nobuffer.buffering.maxResponseBodyBytes=0
+      - traefik.http.routers.hitsync-media.middlewares=hitsync-nobuffer
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      MEDIA_DOMAIN: ${MEDIA_DOMAIN}
+    networks: [proxy]
+    deploy:
+      resources:
+        limits: { memory: 128M }
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-proxy}
+      - traefik.http.routers.hitsync-web.rule=Host(`${APP_DOMAIN}`)
+      - traefik.http.routers.hitsync-web.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.hitsync-web.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      - traefik.http.routers.hitsync-web.priority=10
+      - traefik.http.services.hitsync-web.loadbalancer.server.port=80

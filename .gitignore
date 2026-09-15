@@ -1,0 +1,15 @@
+# Environment
+.env
+
+# Go
+backend/server
+media/media
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Misc
+*.log
+.DS_Store

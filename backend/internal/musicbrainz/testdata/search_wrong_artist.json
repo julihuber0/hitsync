@@ -1,0 +1,15 @@
+{
+  "created": "2024-01-01T00:00:00.000Z",
+  "count": 1,
+  "offset": 0,
+  "recordings": [
+    {
+      "id": "bbbbbbbb-0000-0000-0000-000000000002",
+      "score": 100,
+      "title": "Wish You Were Here",
+      "artist-credit": [
+        { "name": "Some Cover Band", "artist": { "name": "Some Cover Band" } }
+      ]
+    }
+  ]
+}

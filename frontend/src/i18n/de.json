@@ -1,0 +1,181 @@
+{
+  "app": {
+    "name": "Hitsync"
+  },
+  "common": {
+    "back": "Zurück",
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "close": "Schließen",
+    "copy": "Kopieren",
+    "copied": "Kopiert!",
+    "loading": "Lädt…",
+    "save": "Speichern",
+    "remove": "Entfernen",
+    "yes": "Ja",
+    "no": "Nein",
+    "language": "Sprache"
+  },
+  "gate": {
+    "title": "Willkommen bei Hitsync",
+    "subtitle": "Gib den Zugangscode ein, um fortzufahren",
+    "codePlaceholder": "ZUGANGSCODE",
+    "submit": "Los geht's",
+    "error": "Der Code stimmt nicht. Versuch's nochmal."
+  },
+  "home": {
+    "title": "Hitsync",
+    "hostCard": {
+      "title": "Spiel hosten",
+      "namePlaceholder": "Dein Name",
+      "submit": "Spiel erstellen"
+    },
+    "joinCard": {
+      "title": "Spiel beitreten",
+      "namePlaceholder": "Dein Name",
+      "codePlaceholder": "Einladungscode",
+      "submit": "Beitreten"
+    },
+    "recentGames": {
+      "title": "Letzte Spiele",
+      "rejoin": "Wieder beitreten"
+    },
+    "logout": "Abmelden"
+  },
+  "join": {
+    "hostedBy": "Gehostet von {{name}}",
+    "playerCount": "{{count}} / {{max}} Spieler",
+    "namePlaceholder": "Dein Name",
+    "submit": "Beitreten",
+    "notFound": "Wir konnten dieses Spiel nicht finden.",
+    "full": "Dieses Spiel ist voll.",
+    "inProgress": "Dieses Spiel hat bereits begonnen.",
+    "goHome": "Zur Startseite"
+  },
+  "lobby": {
+    "title": "Lobby",
+    "players": "Spieler",
+    "host": "Host",
+    "you": "Du",
+    "settings": "Einstellungen",
+    "targetCards_one": "{{count}} Karte zum Gewinnen",
+    "targetCards_other": "{{count}} Karten zum Gewinnen",
+    "startTokens": "Start-Token",
+    "songGuess": "Songraten-Bonus",
+    "invite": "Einladen",
+    "inviteCode": "Einladungscode",
+    "copyLink": "Einladungslink kopieren",
+    "start": "Spiel starten",
+    "startDisabled": "Warte auf mindestens {{count}} Spieler",
+    "kick": "Rauswerfen"
+  },
+  "board": {
+    "turn": "Runde {{number}}",
+    "yourTurn": "Du bist dran",
+    "playerTurn": "{{name}} ist dran",
+    "waitingForReady": "Audio wird gepuffert…",
+    "placeCard": "Platziere die Karte",
+    "confirmPlacement": "Platzierung bestätigen",
+    "challenge": "Herausfordern",
+    "challengeSlot": "Diesen Platz beanspruchen (1 Token)",
+    "pass": "Passen",
+    "skip": "Song überspringen",
+    "endGame": "Spiel beenden",
+    "tapToEnableSound": "Tippen, um Ton zu aktivieren",
+    "guessTitle": "Errate den Song",
+    "guessTitleLabel": "Titel",
+    "guessArtistLabel": "Künstler",
+    "guessSubmit": "Tipp abgeben",
+    "reconnecting": "Verbindung wird wiederhergestellt…",
+    "cardsCount_one": "{{count}} Karte",
+    "cardsCount_other": "{{count}} Karten",
+    "tokensCount_one": "{{count}} Token",
+    "tokensCount_other": "{{count}} Token"
+  },
+  "reveal": {
+    "title": "Titel",
+    "artist": "Künstler",
+    "year": "Jahr",
+    "correct": "Richtig!",
+    "wrong": "Falsch",
+    "stolen": "{{name}} hat die Karte gestohlen!",
+    "discarded": "Niemand hat's geschafft — Karte verworfen",
+    "sourceLibrary": "Bibliothek",
+    "sourceMusicBrainz": "MusicBrainz",
+    "sourceBoth": "Beide",
+    "sourceManual": "Manuell",
+    "songGuessCorrect": "Bonus-Token verdient!",
+    "continuing": "Nächste Runde startet…"
+  },
+  "gameOver": {
+    "title": "Spiel vorbei",
+    "winner": "{{name}} gewinnt!",
+    "noWinner": "Nicht genug Spieler zum Fortsetzen",
+    "playAgain": "Nochmal spielen",
+    "backHome": "Zurück zur Startseite"
+  },
+  "errors": {
+    "invalid_invite_code": "Kein Spiel mit diesem Code gefunden.",
+    "invalid_access_code": "Falscher Zugangscode.",
+    "invalid_admin_password": "Falsches Admin-Passwort.",
+    "game_full": "Dieses Spiel ist voll.",
+    "duplicate_name": "Dieser Name ist in diesem Spiel schon vergeben.",
+    "invalid_name": "Namen müssen 2-20 Zeichen lang sein.",
+    "game_in_progress": "Dieses Spiel hat bereits begonnen.",
+    "rate_limited": "Zu viele Versuche. Bitte warte einen Moment.",
+    "too_many_games": "Der Server ist ausgelastet. Versuch's gleich nochmal.",
+    "generic": "Etwas ist schiefgelaufen. Bitte versuch's erneut."
+  },
+  "admin": {
+    "login": {
+      "title": "Admin-Login",
+      "passwordPlaceholder": "Admin-Passwort",
+      "submit": "Einloggen"
+    },
+    "nav": {
+      "overview": "Übersicht",
+      "library": "Bibliothek",
+      "exclusions": "Ausschlüsse",
+      "games": "Spiele"
+    },
+    "overview": {
+      "libraryTracks": "Titel in der Bibliothek",
+      "eligibleTracks": "Spielbare Titel",
+      "activeGames": "Aktive Spiele",
+      "lastSync": "Letzter Bibliotheks-Sync",
+      "cacheSize": "MusicBrainz-Cache-Größe",
+      "resync": "Bibliothek jetzt synchronisieren"
+    },
+    "library": {
+      "search": "Titel, Künstler, Album suchen…",
+      "filterAll": "Alle",
+      "filterExcluded": "Ausgeschlossen",
+      "filterIncluded": "Enthalten",
+      "columnTitle": "Titel",
+      "columnArtist": "Künstler",
+      "columnAlbum": "Album",
+      "columnYear": "Navidrome-Jahr",
+      "columnOverride": "Override",
+      "columnExcluded": "Ausgeschlossen",
+      "exclude": "Ausschließen",
+      "include": "Einschließen",
+      "lookupYear": "Jahr nachschlagen",
+      "setOverride": "Override setzen",
+      "overrideYearPlaceholder": "Jahr",
+      "overrideNotePlaceholder": "Notiz (optional)"
+    },
+    "exclusions": {
+      "empty": "Noch keine Ausschlüsse.",
+      "kindTrack": "Titel",
+      "kindAlbum": "Album",
+      "kindArtist": "Künstler"
+    },
+    "games": {
+      "inviteCode": "Einladungscode",
+      "phase": "Phase",
+      "players": "Spieler",
+      "turn": "Runde",
+      "forceEnd": "Zwangsbeenden"
+    }
+  }
+}
