@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useGameStore } from "../store/gameStore";
 import { audioPlayer } from "../audio/instance";
+import type { AudioConnectionState } from "../audio/player";
 import TopBar from "./TopBar";
 import Timeline from "./Timeline";
 import PlayerList from "./PlayerList";
@@ -22,6 +23,7 @@ export default function GameBoard() {
   const [titleGuess, setTitleGuess] = useState<string | null>(null);
   const [artistGuess, setArtistGuess] = useState<string | null>(null);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+  const [audioState, setAudioState] = useState<AudioConnectionState>("idle");
   const readySentFor = useRef<string | null>(null);
 
   const isActive = state.activePlayerId === state.youId;
@@ -39,13 +41,19 @@ export default function GameBoard() {
   // Subscribe to the server's LiveKit broadcast during PREPARING.
   useEffect(() => {
     if (!trackPrepare) return;
-    if (readySentFor.current === trackPrepare.prepareId) return;
-    readySentFor.current = trackPrepare.prepareId;
     audioPlayer.onAutoplayBlocked = () => setAutoplayBlocked(true);
-    void audioPlayer.prepare(trackPrepare.livekitUrl, trackPrepare.livekitToken)
-      .then(() => socket?.ready(trackPrepare.prepareId))
-      .catch(() => setAutoplayBlocked(true));
-  }, [trackPrepare, socket]);
+    audioPlayer.onConnectionStateChange = setAudioState;
+    void audioPlayer.prepare(trackPrepare.prepareId, trackPrepare.livekitUrl, trackPrepare.livekitToken)
+      .then(() => {
+        // Multiple effects may await the same idempotent prepare promise.
+        // Send one ready acknowledgement for this game turn.
+        if (readySentFor.current !== trackPrepare.prepareId) {
+          readySentFor.current = trackPrepare.prepareId;
+          socket?.ready(trackPrepare.prepareId);
+        }
+      })
+      .catch(() => setAudioState("error"));
+  }, [trackPrepare?.prepareId, socket]);
 
   useEffect(() => {
     if (!trackStart) return;
@@ -58,9 +66,13 @@ export default function GameBoard() {
     audioPlayer.stop(400);
   }, [trackStopSignal]);
 
-  const displayedTimeline = activePlayer?.timeline ?? [];
   const inPlacing = state.phase === "PLACING";
   const inChallenging = state.phase === "CHALLENGING";
+  // Outside a challenge, show the player's own established timeline. During
+  // a challenge the target timeline remains visible so its slots can be
+  // claimed. This prevents a player's starting card from appearing to change
+  // whenever the active player rotates.
+  const displayedTimeline = (inChallenging ? activePlayer : you)?.timeline ?? [];
 
   const youChallenged = you?.pendingChallengeSlot != null;
   const youPassed = state.currentTurn?.hasPassed?.includes(state.youId) ?? false;
@@ -98,6 +110,38 @@ export default function GameBoard() {
               ))}
             </div>
           </div>
+
+          {(state.phase === "PREPARING" || audioState === "connecting" || audioState === "subscribed") && (
+            <div role="status" className="flex items-center gap-2 text-sm text-white/65" aria-live="polite">
+              <span className="w-4 h-4 rounded-full border-2 border-accent/30 border-t-accent animate-spin" aria-hidden="true" />
+              {state.phase === "PREPARING"
+                ? t(audioState === "connecting" ? "board.connectingBroadcast" : "board.waitingForReady")
+                : t(audioState === "subscribed" ? "board.broadcastReady" : "board.connectingBroadcast")}
+            </div>
+          )}
+
+          {audioState === "error" && !autoplayBlocked && trackPrepare && (
+            <div role="alert" className="flex items-center gap-3 text-sm text-danger">
+              <span>{t("board.broadcastUnavailable")}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  readySentFor.current = null;
+                  void audioPlayer.prepare(trackPrepare.prepareId, trackPrepare.livekitUrl, trackPrepare.livekitToken)
+                    .then(() => {
+                      if (readySentFor.current !== trackPrepare.prepareId) {
+                        readySentFor.current = trackPrepare.prepareId;
+                        socket?.ready(trackPrepare.prepareId);
+                      }
+                    })
+                    .catch(() => setAudioState("error"));
+                }}
+                className="rounded-md bg-white/10 px-3 py-1.5 font-medium text-white hover:bg-white/20"
+              >
+                {t("board.retryAudio")}
+              </button>
+            </div>
+          )}
 
           {autoplayBlocked && (
             <button

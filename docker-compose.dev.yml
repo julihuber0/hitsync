@@ -16,7 +16,10 @@ volumes:
 services:
   livekit:
     image: livekit/livekit-server:v1.13
-    command: --dev --bind 0.0.0.0
+    # Docker's bridge address and public/STUN address are not reachable by a
+    # browser running on this same machine. Advertise the host loopback
+    # address instead, and pin WebRTC to the UDP port that we publish below.
+    command: --dev --bind 0.0.0.0 --node-ip 127.0.0.1 --udp-port 50000
     ports:
       - "7880:7880"
       - "7881:7881"

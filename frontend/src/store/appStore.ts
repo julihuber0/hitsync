@@ -17,10 +17,15 @@ export const useAppStore = create<AppStore>((set) => ({
 
   checkAccess: async () => {
     try {
+      const { authenticated } = await api.accessStatus();
+      if (!authenticated) {
+        set({ authenticated: false, config: null, checked: true });
+        return;
+      }
       const config = await api.config();
       set({ authenticated: true, config, checked: true });
     } catch {
-      set({ authenticated: false, checked: true });
+      set({ authenticated: false, config: null, checked: true });
     }
   },
 

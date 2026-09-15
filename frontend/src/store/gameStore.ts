@@ -40,7 +40,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const socket = new GameSocket(wsBaseUrl(), playerToken, {
       onConnectionChange: (connected) => set({ connected }),
       onState: (state) => set({ state }),
-      onTrackPrepare: (trackPrepare) => set({ trackPrepare, trackStart: null }),
+      // A stop signal belongs only to the preceding publication. Reset it as
+      // soon as a new turn's broadcast is announced so a GameBoard remount
+      // cannot tear down the fresh LiveKit room with an old stop event.
+      onTrackPrepare: (trackPrepare) => set({ trackPrepare, trackStart: null, trackStopSignal: 0 }),
       onTrackStart: (trackStart) => set({ trackStart }),
       onTrackStop: () => set((s) => ({ trackStopSignal: s.trackStopSignal + 1 })),
       onReveal: (lastReveal) => set({ lastReveal }),
@@ -48,12 +51,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       onKicked: (kickedReason) => set({ kickedReason }),
     });
     socket.connect();
-    set({ socket });
+    set({ socket, trackStopSignal: 0 });
   },
 
   disconnect: () => {
     get().socket?.close();
-    set({ socket: null, connected: false, state: null, trackPrepare: null, trackStart: null, lastReveal: null });
+    set({ socket: null, connected: false, state: null, trackPrepare: null, trackStart: null, trackStopSignal: 0, lastReveal: null });
   },
 
   clearError: () => set({ lastError: null }),

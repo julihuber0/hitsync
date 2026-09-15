@@ -72,6 +72,37 @@ func TestHandleAccess(t *testing.T) {
 	}
 }
 
+func TestHandleAccessStatus(t *testing.T) {
+	a := testAPI()
+
+	rr := doJSON(t, a.handleAccessStatus, http.MethodGet, "/api/auth/access", nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 without cookie, got %d", rr.Code)
+	}
+	var body map[string]bool
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode status: %v", err)
+	}
+	if body["authenticated"] {
+		t.Error("expected unauthenticated status without cookie")
+	}
+
+	token, err := a.issuer.IssueScope("app", time.Hour)
+	if err != nil {
+		t.Fatalf("issue scope: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/access", nil)
+	req.AddCookie(&http.Cookie{Name: accessCookieName, Value: token})
+	rr = httptest.NewRecorder()
+	a.handleAccessStatus(rr, req)
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode status: %v", err)
+	}
+	if !body["authenticated"] {
+		t.Error("expected authenticated status with valid cookie")
+	}
+}
+
 func TestHandleAccessCookieNotSecureOnLocalDomain(t *testing.T) {
 	a := testAPI()
 	a.cfg.AppDomain = "localhost:5173"

@@ -18,6 +18,18 @@ type accessRequest struct {
 	Code string `json:"code"`
 }
 
+// handleAccessStatus lets the client check its HttpOnly access cookie without
+// probing a protected endpoint. An absent or expired cookie is a normal state
+// at the access gate, so this always returns 200 rather than a noisy 401.
+func (a *API) handleAccessStatus(w http.ResponseWriter, r *http.Request) {
+	authenticated := false
+	if cookie, err := r.Cookie(accessCookieName); err == nil {
+		_, err := a.issuer.VerifyScope(cookie.Value, "app")
+		authenticated = err == nil
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"authenticated": authenticated})
+}
+
 // handleAccess implements POST /api/auth/access (§11.1).
 func (a *API) handleAccess(w http.ResponseWriter, r *http.Request) {
 	var req accessRequest

@@ -104,7 +104,10 @@ export default function Timeline({
               }`}
             >
               <span className={`font-semibold tabular-nums ${compact ? "text-base" : "text-xl"}`}>{card.year}</span>
-              {!compact && <span className="text-[10px] text-white/40 mt-1 px-1 text-center line-clamp-2">{card.artist}</span>}
+              <span className={`mt-1 px-1 text-center font-medium leading-tight line-clamp-2 ${compact ? "text-[8px]" : "text-[10px]"}`}>
+                {card.title}
+              </span>
+              {!compact && <span className="text-[10px] text-white/40 mt-0.5 px-1 text-center line-clamp-1">{card.artist}</span>}
             </div>
             {renderSlot(i + 1)}
           </div>

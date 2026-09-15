@@ -18,6 +18,7 @@ func (a *API) Router() http.Handler {
 
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
+			r.Get("/access", a.handleAccessStatus)
 			r.Post("/access", rateLimited(a.accessLimiter, a.handleAccess))
 			r.Post("/logout", a.handleLogout)
 		})

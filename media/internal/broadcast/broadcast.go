@@ -112,7 +112,7 @@ func (b *Broadcaster) Start(gameID, trackID, sourcePath string) error {
 
 	cmd := exec.CommandContext(s.ctx, b.cfg.FFmpegPath,
 		"-nostdin", "-hide_banner", "-loglevel", "warning", "-re", "-i", sourcePath,
-		"-vn", "-c:a", "libopus", "-ar", "48000", "-ac", "2", "-f", "ogg", "pipe:1")
+		"-vn", "-c:a", "libopus", "-ar", "48000", "-ac", "2", "-page_duration", "20000", "-f", "ogg", "pipe:1")
 	cmd.Stdout = s.writer
 	if err := cmd.Start(); err != nil {
 		b.Stop(gameID, trackID)

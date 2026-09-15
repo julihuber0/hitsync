@@ -61,6 +61,7 @@ export interface GamePreview {
 }
 
 export const api = {
+  accessStatus: () => request<{ authenticated: boolean }>("/api/auth/access"),
   access: (code: string) => request<{ ok: boolean }>("/api/auth/access", { method: "POST", body: JSON.stringify({ code }) }),
   logout: () => request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
   config: () => request<AppConfig>("/api/config"),

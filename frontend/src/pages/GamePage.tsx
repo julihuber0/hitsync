@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useGameStore } from "../store/gameStore";
 import { loadPlayerToken } from "../api/identity";
@@ -14,15 +14,37 @@ export default function GamePage() {
   const state = useGameStore((s) => s.state);
   const connected = useGameStore((s) => s.connected);
   const kickedReason = useGameStore((s) => s.kickedReason);
+  const disconnectTimer = useRef<number | null>(null);
+  const connectedGameID = useRef<string | null>(null);
 
   useEffect(() => {
+    let resumedStrictModeEffect = false;
+    if (disconnectTimer.current !== null) {
+      window.clearTimeout(disconnectTimer.current);
+      disconnectTimer.current = null;
+      resumedStrictModeEffect = connectedGameID.current === gameId;
+    }
     const token = loadPlayerToken(gameId);
     if (!token) {
+      disconnect();
+      connectedGameID.current = null;
       navigate("/");
       return;
     }
-    connect(token);
-    return () => disconnect();
+    if (!resumedStrictModeEffect) {
+      connect(token);
+      connectedGameID.current = gameId;
+    }
+    return () => {
+      // React Strict Mode intentionally mounts, cleans up, and remounts an
+      // effect in development. Deferring this lets the immediate remount keep
+      // the socket instead of producing a spurious close-before-open error.
+      disconnectTimer.current = window.setTimeout(() => {
+        disconnect();
+        connectedGameID.current = null;
+        disconnectTimer.current = null;
+      }, 0);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId]);
 
