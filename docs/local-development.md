@@ -31,15 +31,29 @@ This starts Postgres on `localhost:5432` with user/password/db `hitsync`/`devpas
 persisted in its own `hitsync-dev_pgdata-dev` volume (separate from anything the production compose
 file creates). `make dev-down` stops it.
 
-## 2. Get a Navidrome to point at
+## 2. Point at a Navidrome
 
-You have three options, in order of how close to "real" you want to test:
+**The normal case: use your real server, local or remote, exactly as in production.** `NAVIDROME_URL`
+is just a URL the backend process calls over the network — there's nothing local-dev-specific about
+it, and no special networking is needed for a remote one (unlike Docker-to-Docker setups, a native
+process on your machine reaching out to `https://music.example.com` is no different from any other
+outbound HTTPS call). In `.env.dev` (created in step 3), set:
 
-**A. Point at your real Navidrome.** If you already run one (even remotely), just use its URL and
-credentials. This is the only way to test with your actual library.
+```
+NAVIDROME_URL=https://music.example.com
+NAVIDROME_USERNAME=hitsync
+NAVIDROME_PASSWORD=<your real password>
+```
 
-**B. Spin up a throwaway Navidrome with a few test files.** Drop a handful of MP3s you have the
-rights to use into `./dev-music/` (git-ignored), then:
+using whatever credentials you'd use in a real deployment. That's the whole setup — the backend
+syncs your actual library on startup, same as it would in production.
+
+Two fallbacks if you don't already have a Navidrome to test against:
+
+<details>
+<summary><strong>No Navidrome yet? Spin up a throwaway one with a few test files.</strong></summary>
+
+Drop a handful of MP3s you have the rights to use into `./dev-music/` (git-ignored), then:
 
 ```sh
 docker compose -f docker-compose.dev.yml --profile navidrome up -d navidrome
@@ -48,13 +62,20 @@ docker compose -f docker-compose.dev.yml --profile navidrome up -d navidrome
 This runs Navidrome on `localhost:4533`, indexing `./dev-music`. Open `http://localhost:4533` once
 to create its own admin account (this is Navidrome's own login, unrelated to Hitsync's), then
 create a second user for Hitsync to authenticate as (Settings → Users), or just reuse the admin
-account for local testing.
+account for local testing. Point `.env.dev`'s `NAVIDROME_URL` at `http://localhost:4533`.
 
-**C. Skip it entirely.** The backend and frontend both start up fine with an unreachable
-`NAVIDROME_URL` — the library sync just logs an error every `LIBRARY_SYNC_INTERVAL` and keeps
-retrying (this is by design: a temporarily-down Navidrome must never crash the backend). You can
-exercise the access gate, lobby, settings, and admin console this way, but no game will have any
-tracks to draw from, since the library never populates.
+</details>
+
+<details>
+<summary><strong>Just testing the UI? Skip Navidrome entirely.</strong></summary>
+
+The backend and frontend both start up fine with an unreachable `NAVIDROME_URL` — the library sync
+just logs an error every `LIBRARY_SYNC_INTERVAL` and keeps retrying (this is by design: a
+temporarily-down Navidrome must never crash the backend). You can exercise the access gate, lobby,
+settings, and admin console this way, but no game will have any tracks to draw from, since the
+library never populates.
+
+</details>
 
 ## 3. Configure `.env.dev`
 
@@ -62,9 +83,9 @@ tracks to draw from, since the library never populates.
 cp .env.dev.example .env.dev
 ```
 
-The defaults are pre-filled dev secrets and match the Postgres container from step 1. The one
-thing you'll actually want to change is `NAVIDROME_URL`/`NAVIDROME_USERNAME`/`NAVIDROME_PASSWORD`
-if you're using option A or B above.
+The defaults are pre-filled dev secrets and match the Postgres container from step 1. The one thing
+you'll actually want to change is `NAVIDROME_URL`/`NAVIDROME_USERNAME`/`NAVIDROME_PASSWORD` to
+point at your real server from step 2 (or the throwaway one, if you went that route).
 
 Two things in this file are important to understand, because they exist specifically to make local
 dev work over plain HTTP without Traefik or a certificate:
@@ -178,9 +199,9 @@ check, and the WebSocket origin check all key off this one value.
 for the actual close reason, and confirm `APP_DOMAIN` matches as above; a mismatched origin closes
 the socket immediately after `hello`.
 
-**No tracks, `eligibleTracks: 0` in `/healthz`** — expected if you skipped setting up Navidrome (see
-step 2, option C). Otherwise, check the backend log for `"library sync: page fetch failed"` and
-verify `NAVIDROME_URL`/credentials.
+**No tracks, `eligibleTracks: 0` in `/healthz`** — expected if you skipped Navidrome entirely (§2
+above). Otherwise, check the backend log for `"library sync: page fetch failed"` and verify
+`NAVIDROME_URL`/credentials are actually correct for your server.
 
 **Config errors on startup** ("invalid configuration: ... must be at least N characters") — the
 same fail-fast validation that runs in production runs locally too; the provided
