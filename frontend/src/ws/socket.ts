@@ -172,6 +172,9 @@ export class GameSocket {
   placeCard(slotIndex: number, titleGuess?: string, artistGuess?: string): void {
     this.send("place_card", { slotIndex, titleGuess, artistGuess });
   }
+  previewPlacement(slotIndex: number): void {
+    this.send("place_preview", { slotIndex });
+  }
   challenge(slotIndex: number): void {
     this.send("challenge", { slotIndex });
   }

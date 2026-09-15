@@ -20,6 +20,7 @@ const (
 	TypeUpdateSettings   = "update_settings"
 	TypeStartGame        = "start_game"
 	TypePlaceCard        = "place_card"
+	TypePlacePreview     = "place_preview"
 	TypeChallenge        = "challenge"
 	TypeChallengePreview = "challenge_preview"
 	TypePassChallenge    = "pass_challenge"
@@ -75,6 +76,12 @@ type PlaceCardPayload struct {
 	SlotIndex   int     `json:"slotIndex"`
 	TitleGuess  *string `json:"titleGuess,omitempty"`
 	ArtistGuess *string `json:"artistGuess,omitempty"`
+}
+
+// PlacePreviewPayload shares the active player's revisable intended
+// placement slot. It never submits; TypePlaceCard is the final submission.
+type PlacePreviewPayload struct {
+	SlotIndex int `json:"slotIndex"`
 }
 
 // ChallengePayload claims a slot during CHALLENGING.

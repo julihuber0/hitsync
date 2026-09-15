@@ -36,10 +36,13 @@ type SettingsView struct {
 
 // CurrentTurnView is the in-progress turn's visible state (§13.3).
 type CurrentTurnView struct {
-	ActivePlacementSubmitted bool     `json:"activePlacementSubmitted"`
-	ActivePlacementSlot      *int     `json:"activePlacementSlot"`
-	ChallengeSlotsTaken      []int    `json:"challengeSlotsTaken"`
-	HasPassed                []string `json:"hasPassed"`
+	ActivePlacementSubmitted bool `json:"activePlacementSubmitted"`
+	ActivePlacementSlot      *int `json:"activePlacementSlot"`
+	// ActivePlacementPreviewSlot is the active player's revisable,
+	// pre-submission slot selection, visible to everyone live.
+	ActivePlacementPreviewSlot *int     `json:"activePlacementPreviewSlot"`
+	ChallengeSlotsTaken        []int    `json:"challengeSlotsTaken"`
+	HasPassed                  []string `json:"hasPassed"`
 }
 
 // StatePayload is the full per-recipient game state snapshot (§13.3).
@@ -104,6 +107,10 @@ func (mg *ManagedGame) buildState(forPlayerID string) StatePayload {
 		if g.Turn.PlacementSubmitted {
 			slot := g.Turn.PlacementSlot
 			ct.ActivePlacementSlot = &slot
+		}
+		if g.Turn.PlacementPreviewSlot >= 0 {
+			slot := g.Turn.PlacementPreviewSlot
+			ct.ActivePlacementPreviewSlot = &slot
 		}
 		for _, slot := range g.Turn.Challenges {
 			ct.ChallengeSlotsTaken = append(ct.ChallengeSlotsTaken, slot)

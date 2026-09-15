@@ -59,15 +59,16 @@ func (g *Game) BeginTurn(track Card) error {
 	}
 	g.Phase = PhasePreparing
 	g.Turn = &Turn{
-		Number:            g.currentTurnNumber,
-		ActivePlayerID:    active.ID,
-		Track:             track,
-		PlacementSlot:     -2, // sentinel: not yet submitted
-		Order:             g.seatOrderFrom(g.ActivePlayerIdx),
-		Challenges:        map[string]int{},
-		ChallengePreviews: map[string]int{},
-		Passed:            map[string]bool{},
-		Spent:             map[string]int{},
+		Number:               g.currentTurnNumber,
+		ActivePlayerID:       active.ID,
+		Track:                track,
+		PlacementSlot:        -2, // sentinel: not yet submitted
+		PlacementPreviewSlot: -2, // sentinel: none selected
+		Order:                g.seatOrderFrom(g.ActivePlayerIdx),
+		Challenges:           map[string]int{},
+		ChallengePreviews:    map[string]int{},
+		Passed:               map[string]bool{},
+		Spent:                map[string]int{},
 	}
 	g.UsedTrackIDs[track.TrackID] = true
 	g.TracksUsedCount++
@@ -112,6 +113,7 @@ func (g *Game) PlaceCard(playerID string, slotIndex int) (skipChallenge bool, er
 	}
 	g.Turn.PlacementSlot = slotIndex
 	g.Turn.PlacementSubmitted = true
+	g.Turn.PlacementPreviewSlot = -2
 	return g.advanceFromPlacing(), nil
 }
 
@@ -122,7 +124,27 @@ func (g *Game) PlacementTimeout() (skipChallenge bool, err error) {
 	}
 	g.Turn.PlacementSlot = -1
 	g.Turn.PlacementSubmitted = true
+	g.Turn.PlacementPreviewSlot = -2
 	return g.advanceFromPlacing(), nil
+}
+
+// PreviewPlacement records the active player's currently selected placement
+// slot before final submission. The preview is public, revisable, and never
+// spends anything.
+func (g *Game) PreviewPlacement(playerID string, slotIndex int) error {
+	if g.Phase != PhasePlacing {
+		return ErrWrongPhase
+	}
+	if g.Turn == nil || playerID != g.Turn.ActivePlayerID {
+		return ErrNotActivePlayer
+	}
+	active := g.ActivePlayer()
+	n := len(active.Timeline)
+	if slotIndex < 0 || slotIndex > n {
+		return ErrInvalidSlot
+	}
+	g.Turn.PlacementPreviewSlot = slotIndex
+	return nil
 }
 
 // advanceFromPlacing moves to CHALLENGING, or reports that CHALLENGING

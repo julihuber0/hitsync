@@ -110,8 +110,12 @@ func (b *Broadcaster) Start(gameID, trackID, sourcePath string) error {
 	s.started = true
 	b.mu.Unlock()
 
+	// -stream_loop -1 repeats the source indefinitely: rounds have no fixed
+	// duration and play until the game explicitly calls Stop (on submit or
+	// skip), so a track shorter than a round must loop rather than go silent.
 	cmd := exec.CommandContext(s.ctx, b.cfg.FFmpegPath,
-		"-nostdin", "-hide_banner", "-loglevel", "warning", "-probesize", "32k", "-analyzeduration", "0", "-re", "-i", sourcePath,
+		"-nostdin", "-hide_banner", "-loglevel", "warning", "-probesize", "32k", "-analyzeduration", "0", "-re",
+		"-stream_loop", "-1", "-i", sourcePath,
 		"-vn", "-c:a", "libopus", "-ar", "48000", "-ac", "2", "-page_duration", "20000", "-f", "ogg", "pipe:1")
 	cmd.Stdout = s.writer
 	if err := cmd.Start(); err != nil {

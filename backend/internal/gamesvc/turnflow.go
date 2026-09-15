@@ -160,11 +160,24 @@ func (mg *ManagedGame) beginPlacing() {
 		c.Send(ws.TypeTrackStart, ws.TrackStartPayload{PrepareID: mg.lastPrep.prepareID})
 	}
 
-	timeout := mg.cfg.TurnPlacementTimeout
+	// PLACING has no timeout while the active player is connected: the track
+	// loops until they submit or the host skips (§8.5). A disconnected active
+	// player still gets a bounded fallback so the game can't stall forever.
 	if active := mg.g.ActivePlayer(); active != nil && !active.Connected {
-		timeout = mg.cfg.DisconnectedPlacementTimeout
+		mg.schedulePhaseTimeout(mg.cfg.DisconnectedPlacementTimeout, mg.onPlacementTimeout)
+	} else {
+		mg.clearPhaseTimeout()
 	}
-	mg.schedulePhaseTimeout(timeout, mg.onPlacementTimeout)
+	mg.broadcastState()
+}
+
+func (mg *ManagedGame) handlePlacePreview(playerID string, slotIndex int) {
+	if err := mg.g.PreviewPlacement(playerID, slotIndex); err != nil {
+		if c := mg.conns[playerID]; c != nil {
+			mg.sendError(c, "invalid_placement_preview", err.Error())
+		}
+		return
+	}
 	mg.broadcastState()
 }
 

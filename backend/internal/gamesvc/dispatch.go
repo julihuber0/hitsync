@@ -39,6 +39,12 @@ func dispatchMessage(mg *ManagedGame, c *ws.Conn, env ws.Envelope) {
 			mg.handlePlaceCard(c.PlayerID, p.SlotIndex, p.TitleGuess, p.ArtistGuess)
 		}
 
+	case ws.TypePlacePreview:
+		var p ws.PlacePreviewPayload
+		if json.Unmarshal(env.Payload, &p) == nil {
+			mg.handlePlacePreview(c.PlayerID, p.SlotIndex)
+		}
+
 	case ws.TypeChallenge:
 		var p ws.ChallengePayload
 		if json.Unmarshal(env.Payload, &p) == nil {

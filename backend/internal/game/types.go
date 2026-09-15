@@ -66,6 +66,9 @@ type Turn struct {
 
 	PlacementSubmitted bool
 	PlacementSlot      int // -1 means auto-fail (timeout)
+	// PlacementPreviewSlot is the active player's revisable, public slot
+	// selection before final submission. -2 means none selected.
+	PlacementPreviewSlot int
 
 	// Order is the seat order snapshot used to resolve challenges starting
 	// from the seat after the active player (§8.8 rule 2).

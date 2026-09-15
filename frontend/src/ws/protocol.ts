@@ -25,6 +25,7 @@ export interface PlayerView {
 export interface CurrentTurnView {
   activePlacementSubmitted: boolean;
   activePlacementSlot: number | null;
+  activePlacementPreviewSlot: number | null;
   challengeSlotsTaken: number[];
   hasPassed: string[];
 }

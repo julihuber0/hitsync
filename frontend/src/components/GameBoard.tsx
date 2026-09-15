@@ -8,6 +8,9 @@ import Timeline from "./Timeline";
 import PlayerList from "./PlayerList";
 import RevealOverlay from "./RevealOverlay";
 import SongGuessPanel from "./SongGuessPanel";
+import CountdownRing from "./CountdownRing";
+
+const CHALLENGE_WINDOW_MS = 5000;
 
 export default function GameBoard() {
   const { t } = useTranslation();
@@ -96,6 +99,11 @@ export default function GameBoard() {
     socket?.previewChallenge(slot);
   };
 
+  const selectPlacementSlot = (slot: number) => {
+    setSelectedSlot(slot);
+    socket?.previewPlacement(slot);
+  };
+
   return (
     <div className="min-h-screen bg-bg flex flex-col lg:flex-row">
       <div className="flex-1 flex flex-col gap-5 p-4 min-w-0">
@@ -158,6 +166,7 @@ export default function GameBoard() {
                     takenSlots={state.currentTurn?.challengeSlotsTaken ?? []}
                     disabledSlot={player.id === activePlayer?.id ? state.currentTurn?.activePlacementSlot : null}
                     placementSlot={player.id === activePlayer?.id ? state.currentTurn?.activePlacementSlot : null}
+                    previewSlot={player.id === activePlayer?.id ? state.currentTurn?.activePlacementPreviewSlot : null}
                     previews={player.id === activePlayer?.id ? previews : []}
                   />
                 </article>
@@ -173,7 +182,7 @@ export default function GameBoard() {
             size="large"
             mode={inPlacing && isActive ? "place" : "view"}
             selectedSlot={inPlacing && isActive ? selectedSlot : null}
-            onSelectSlot={inPlacing && isActive ? setSelectedSlot : undefined}
+            onSelectSlot={inPlacing && isActive ? selectPlacementSlot : undefined}
             placementSlot={isActive ? state.currentTurn?.activePlacementSlot : null}
           />
 
@@ -189,6 +198,14 @@ export default function GameBoard() {
 
         {inChallenging && !isActive && (
           <div className="flex flex-wrap items-center justify-center gap-3">
+            {!alreadyActed && (
+              <CountdownRing
+                deadlineMs={state.phaseEndsAtServerMs}
+                totalMs={CHALLENGE_WINDOW_MS}
+                serverNow={() => socket?.clock.serverNow() ?? Date.now()}
+                size={32}
+              />
+            )}
             {canSteal && !stealMode && (
               <button onClick={() => setStealMode(true)} className="bg-accent hover:brightness-110 transition-[filter] text-white font-semibold py-2 px-6 rounded-lg text-sm">
                 {t("board.steal")}

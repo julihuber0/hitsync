@@ -69,7 +69,7 @@ type Config struct {
 	MaxTokens            int           `env:"MAX_TOKENS" envDefault:"5"`
 	RuleEnableSongGuess  bool          `env:"RULE_ENABLE_SONG_GUESS" envDefault:"true"`
 	TurnPlacementTimeout time.Duration `env:"TURN_PLACEMENT_TIMEOUT" envDefault:"90s"`
-	TurnChallengeWindow  time.Duration `env:"TURN_CHALLENGE_WINDOW" envDefault:"20s"`
+	TurnChallengeWindow  time.Duration `env:"TURN_CHALLENGE_WINDOW" envDefault:"5s"`
 	RevealDuration       time.Duration `env:"REVEAL_DURATION" envDefault:"8s"`
 	TrackMinDuration     time.Duration `env:"TRACK_MIN_DURATION" envDefault:"45s"`
 	TrackMaxDuration     time.Duration `env:"TRACK_MAX_DURATION" envDefault:"600s"`

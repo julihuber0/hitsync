@@ -6,10 +6,11 @@ import { audioPlayer } from "../audio/instance";
 import CountdownRing from "./CountdownRing";
 import LanguageToggle from "./LanguageToggle";
 
+// PLACING has no entry: it has no deadline (the track loops until the
+// active player submits or the host skips), so CountdownRing renders idle.
 const PHASE_DURATIONS: Record<string, number> = {
   PREPARING: 8000,
-  PLACING: 90000,
-  CHALLENGING: 20000,
+  CHALLENGING: 5000,
   REVEALING: 8000,
 };
 

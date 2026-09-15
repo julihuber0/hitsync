@@ -10,6 +10,7 @@ interface Props {
   takenSlots?: number[];
   disabledSlot?: number | null;
   placementSlot?: number | null;
+  previewSlot?: number | null;
   highlightSlot?: number | null;
   highlightCorrect?: boolean;
   previews?: Array<{ playerId: string; name: string; colour: string; slot: number }>;
@@ -24,6 +25,7 @@ export default function Timeline({
   takenSlots = [],
   disabledSlot = null,
   placementSlot = null,
+  previewSlot = null,
   highlightSlot = null,
   highlightCorrect,
   previews = [],
@@ -60,6 +62,7 @@ export default function Timeline({
     const isTaken = takenSlots.includes(slot);
     const isDisabled = disabledSlot === slot;
     const isPlacement = placementSlot === slot;
+    const isPreview = previewSlot === slot && !isPlacement;
     const clickable = slotClickable(slot);
     const slotPreviews = previews.filter((preview) => preview.slot === slot);
 
@@ -74,6 +77,9 @@ export default function Timeline({
             </span>
           )}
           {isPlacement && <span className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full bg-accent" aria-label="submitted placement" />}
+          {isPreview && (
+            <span className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full border-2 border-accent bg-accent/30 animate-pulse" aria-label="selecting placement" />
+          )}
         </div>
       );
     }
@@ -107,6 +113,9 @@ export default function Timeline({
           </span>
         )}
         {isPlacement && <span className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full bg-accent" aria-label="submitted placement" />}
+        {isPreview && (
+          <span className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full border-2 border-accent bg-accent/30 animate-pulse" aria-label="selecting placement" />
+        )}
       </button>
     );
   };
