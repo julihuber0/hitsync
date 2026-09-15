@@ -26,6 +26,7 @@ const (
 	TypePassChallenge    = "pass_challenge"
 	TypeSkipTrack        = "skip_track"
 	TypeKickPlayer       = "kick_player"
+	TypeAdjustTokens     = "adjust_tokens"
 	TypeEndGame          = "end_game"
 	TypePlayAgain        = "play_again"
 	TypeLeave            = "leave"
@@ -98,6 +99,13 @@ type ChallengePreviewPayload struct {
 // KickPlayerPayload names a player to remove.
 type KickPlayerPayload struct {
 	PlayerID string `json:"playerId"`
+}
+
+// AdjustTokensPayload lets the host manually award or remove a token from a
+// player, typically for off-band correct title/artist guesses.
+type AdjustTokensPayload struct {
+	PlayerID string `json:"playerId"`
+	Delta    int    `json:"delta"`
 }
 
 // ErrorPayload reports a machine-readable error (§12).

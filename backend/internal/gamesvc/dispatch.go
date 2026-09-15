@@ -69,6 +69,12 @@ func dispatchMessage(mg *ManagedGame, c *ws.Conn, env ws.Envelope) {
 			mg.handleKickPlayer(c.PlayerID, p.PlayerID)
 		}
 
+	case ws.TypeAdjustTokens:
+		var p ws.AdjustTokensPayload
+		if json.Unmarshal(env.Payload, &p) == nil {
+			mg.handleAdjustTokens(c.PlayerID, p.PlayerID, p.Delta)
+		}
+
 	case ws.TypeEndGame:
 		mg.handleEndGame(c.PlayerID)
 

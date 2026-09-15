@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { Crown, Circle } from "lucide-react";
+import { Crown, Circle, Plus, Minus } from "lucide-react";
 import type { PlayerView } from "../ws/protocol";
 
 interface Props {
@@ -10,10 +10,11 @@ interface Props {
   variant: "lobby" | "board";
   activePlayerId?: string;
   onKick?: (playerId: string) => void;
+  onAdjustTokens?: (playerId: string, delta: number) => void;
   isHost?: boolean;
 }
 
-function PlayerListImpl({ players, youId, hostId, variant, activePlayerId, onKick, isHost }: Props) {
+function PlayerListImpl({ players, youId, hostId, variant, activePlayerId, onKick, onAdjustTokens, isHost }: Props) {
   const { t } = useTranslation();
   return (
     <ul className="flex flex-col gap-2">
@@ -26,6 +27,7 @@ function PlayerListImpl({ players, youId, hostId, variant, activePlayerId, onKic
           isActive={p.id === activePlayerId}
           variant={variant}
           onKick={variant === "lobby" && isHost && p.id !== youId ? () => onKick?.(p.id) : undefined}
+          onAdjustTokens={variant === "board" && isHost ? (delta) => onAdjustTokens?.(p.id, delta) : undefined}
           kickLabel={t("lobby.kick")}
           youLabel={t("common.yes")}
         />
@@ -41,11 +43,12 @@ interface RowProps {
   isActive: boolean;
   variant: "lobby" | "board";
   onKick?: () => void;
+  onAdjustTokens?: (delta: number) => void;
   kickLabel: string;
   youLabel: string;
 }
 
-const PlayerRow = memo(function PlayerRow({ player, isYou, isHost, isActive, variant, onKick }: RowProps) {
+const PlayerRow = memo(function PlayerRow({ player, isYou, isHost, isActive, variant, onKick, onAdjustTokens }: RowProps) {
   const { t } = useTranslation();
   return (
     <li
@@ -71,6 +74,26 @@ const PlayerRow = memo(function PlayerRow({ player, isYou, isHost, isActive, var
       {variant === "board" && (
         <span className="text-xs text-neon/50 tabular-nums shrink-0">
           {t("board.cardsCount", { count: player.timeline.length })} · {t("board.tokensCount", { count: player.tokens })}
+        </span>
+      )}
+
+      {onAdjustTokens && (
+        <span className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => onAdjustTokens(-1)}
+            aria-label={t("board.removeToken")}
+            className="w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan active:scale-90 transition-all duration-150 disabled:opacity-30"
+            disabled={player.tokens <= 0}
+          >
+            <Minus size={12} />
+          </button>
+          <button
+            onClick={() => onAdjustTokens(1)}
+            aria-label={t("board.addToken")}
+            className="w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan active:scale-90 transition-all duration-150"
+          >
+            <Plus size={12} />
+          </button>
         </span>
       )}
 

@@ -47,3 +47,24 @@ func (g *Game) Kick(hostID, targetPlayerID string, minPlayers int) (endedNoWinne
 	}
 	return g.RemovePlayer(targetPlayerID, minPlayers), nil
 }
+
+// AdjustTokens lets the host manually add or remove tokens from a player,
+// clamped to [0, MaxTokens]. Used to award tokens earned by out-of-band
+// title/artist guesses (e.g. over voice chat) that the client doesn't track.
+func (g *Game) AdjustTokens(hostID, targetPlayerID string, delta int) error {
+	if hostID != g.HostID {
+		return ErrNotHost
+	}
+	p := g.Player(targetPlayerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.Tokens += delta
+	if p.Tokens < 0 {
+		p.Tokens = 0
+	}
+	if p.Tokens > g.Settings.MaxTokens {
+		p.Tokens = g.Settings.MaxTokens
+	}
+	return nil
+}

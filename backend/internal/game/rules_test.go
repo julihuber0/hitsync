@@ -487,3 +487,51 @@ func TestPhaseTransitions(t *testing.T) {
 		}
 	})
 }
+
+func TestAdjustTokens(t *testing.T) {
+	t.Run("host can grant and remove tokens", func(t *testing.T) {
+		g, ids := newTestGame(t, "Anna", "Bob") // Anna is host, StartTokens: 2, MaxTokens: 5
+		if err := g.AdjustTokens(ids["Anna"], ids["Bob"], 1); err != nil {
+			t.Fatalf("adjust: %v", err)
+		}
+		if got := g.Player(ids["Bob"]).Tokens; got != 3 {
+			t.Errorf("tokens = %d, want 3", got)
+		}
+		if err := g.AdjustTokens(ids["Anna"], ids["Anna"], -1); err != nil {
+			t.Fatalf("adjust self: %v", err)
+		}
+		if got := g.Player(ids["Anna"]).Tokens; got != 1 {
+			t.Errorf("tokens = %d, want 1", got)
+		}
+	})
+
+	t.Run("clamps to [0, MaxTokens]", func(t *testing.T) {
+		g, ids := newTestGame(t, "Anna", "Bob")
+		if err := g.AdjustTokens(ids["Anna"], ids["Bob"], -10); err != nil {
+			t.Fatalf("adjust: %v", err)
+		}
+		if got := g.Player(ids["Bob"]).Tokens; got != 0 {
+			t.Errorf("tokens = %d, want 0", got)
+		}
+		if err := g.AdjustTokens(ids["Anna"], ids["Bob"], 10); err != nil {
+			t.Fatalf("adjust: %v", err)
+		}
+		if got := g.Player(ids["Bob"]).Tokens; got != g.Settings.MaxTokens {
+			t.Errorf("tokens = %d, want %d", got, g.Settings.MaxTokens)
+		}
+	})
+
+	t.Run("non-host is rejected", func(t *testing.T) {
+		g, ids := newTestGame(t, "Anna", "Bob")
+		if err := g.AdjustTokens(ids["Bob"], ids["Anna"], 1); err != ErrNotHost {
+			t.Errorf("expected ErrNotHost, got %v", err)
+		}
+	})
+
+	t.Run("unknown target is rejected", func(t *testing.T) {
+		g, ids := newTestGame(t, "Anna", "Bob")
+		if err := g.AdjustTokens(ids["Anna"], "nope", 1); err != ErrPlayerNotFound {
+			t.Errorf("expected ErrPlayerNotFound, got %v", err)
+		}
+	})
+}

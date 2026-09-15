@@ -371,6 +371,16 @@ func (mg *ManagedGame) handleKickPlayer(hostID, targetID string) {
 	mg.broadcastState()
 }
 
+func (mg *ManagedGame) handleAdjustTokens(hostID, targetID string, delta int) {
+	if err := mg.g.AdjustTokens(hostID, targetID, delta); err != nil {
+		if c := mg.conns[hostID]; c != nil {
+			mg.sendError(c, "adjust_tokens_failed", err.Error())
+		}
+		return
+	}
+	mg.broadcastState()
+}
+
 func (mg *ManagedGame) handleEndGame(hostID string) {
 	if err := mg.g.EndGame(hostID); err != nil {
 		return

@@ -190,6 +190,9 @@ export class GameSocket {
   kickPlayer(playerId: string): void {
     this.send("kick_player", { playerId });
   }
+  adjustTokens(playerId: string, delta: number): void {
+    this.send("adjust_tokens", { playerId, delta });
+  }
   endGame(): void {
     this.send("end_game", {});
   }

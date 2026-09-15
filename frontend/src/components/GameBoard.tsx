@@ -260,7 +260,15 @@ export default function GameBoard() {
       </div>
 
       <div className="w-full lg:w-72 shrink-0 p-4 card-surface lg:rounded-none">
-        <PlayerList players={state.players} youId={state.youId} hostId={state.hostId} variant="board" activePlayerId={state.activePlayerId} />
+        <PlayerList
+          players={state.players}
+          youId={state.youId}
+          hostId={state.hostId}
+          variant="board"
+          activePlayerId={state.activePlayerId}
+          isHost={state.hostId === state.youId}
+          onAdjustTokens={(playerId, delta) => socket?.adjustTokens(playerId, delta)}
+        />
       </div>
 
       {state.phase === "REVEALING" && lastReveal && <RevealOverlay reveal={lastReveal} players={state.players} />}

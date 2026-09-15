@@ -98,7 +98,9 @@
     "cardsCount_one": "{{count}} Karte",
     "cardsCount_other": "{{count}} Karten",
     "tokensCount_one": "{{count}} Token",
-    "tokensCount_other": "{{count}} Token"
+    "tokensCount_other": "{{count}} Token",
+    "addToken": "Token hinzufügen",
+    "removeToken": "Token entfernen"
   },
   "reveal": {
     "title": "Titel",
