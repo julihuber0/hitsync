@@ -34,15 +34,15 @@ export default function Lobby() {
   const canStart = state.players.length >= minPlayers;
 
   return (
-    <div className="min-h-screen bg-bg px-4 py-8">
+    <div className="min-h-screen px-4 py-8 animate-fade-in">
       <div className="max-w-5xl mx-auto flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">{t("lobby.title")}</h1>
+        <h1 className="neon-heading text-xl font-semibold">{t("lobby.title")}</h1>
         <LanguageToggle />
       </div>
 
       <div className="max-w-5xl mx-auto grid lg:grid-cols-[1fr_1.2fr] gap-6">
         <div className="card-surface p-6">
-          <h2 className="text-sm font-semibold text-white/70 mb-3">
+          <h2 className="text-sm font-semibold text-neon/70 mb-3">
             {t("lobby.players")} ({state.players.length})
           </h2>
           <PlayerList
@@ -57,17 +57,19 @@ export default function Lobby() {
 
         <div className="flex flex-col gap-6">
           <div className="card-surface p-6">
-            <h2 className="text-sm font-semibold text-white/70 mb-4">{t("lobby.settings")}</h2>
+            <h2 className="text-sm font-semibold text-neon/70 mb-4">{t("lobby.settings")}</h2>
             <SettingsPanel isHost={isHost} />
           </div>
 
           <div className="card-surface p-6 flex flex-col items-center gap-4">
-            <h2 className="text-sm font-semibold text-white/70 self-start">{t("lobby.invite")}</h2>
-            <div className="text-4xl font-mono font-semibold tracking-[0.2em]">{formatInviteCode(state.inviteCode)}</div>
+            <h2 className="text-sm font-semibold text-neon/70 self-start">{t("lobby.invite")}</h2>
+            <div className="neon-heading text-4xl font-mono font-semibold tracking-[0.2em] text-accent">
+              {formatInviteCode(state.inviteCode)}
+            </div>
             <QrCode value={joinUrl} />
             <button
               onClick={() => void copyLink()}
-              className="flex items-center gap-2 text-sm bg-white/10 hover:bg-white/20 transition-colors rounded-lg px-4 py-2"
+              className="flex items-center gap-2 text-sm bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan active:scale-[0.97] transition-all duration-200 rounded-lg px-4 py-2"
             >
               {copied ? <Check size={16} className="text-success" /> : <Copy size={16} />}
               {copied ? t("common.copied") : t("lobby.copyLink")}
@@ -79,7 +81,7 @@ export default function Lobby() {
               <button
                 onClick={() => socket?.startGame()}
                 disabled={!canStart}
-                className="w-full bg-accent hover:brightness-110 transition-[filter] text-white font-semibold py-3 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-3 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none"
               >
                 {t("lobby.start")}
               </button>
@@ -144,7 +146,7 @@ function SettingsPanel({ isHost }: { isHost: boolean }) {
 function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between text-sm text-white/70">
+      <div className="flex items-center justify-between text-sm text-neon/70">
         <span>{label}</span>
       </div>
       <div className="flex items-center gap-2">{children}</div>

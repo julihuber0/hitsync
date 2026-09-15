@@ -105,7 +105,7 @@ export default function GameBoard() {
   };
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col lg:flex-row">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       <div className="flex-1 flex flex-col gap-5 p-4 min-w-0">
         <TopBar />
 
@@ -113,13 +113,17 @@ export default function GameBoard() {
           <div className="relative w-20 h-20 rounded-2xl card-surface flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 flex items-center justify-center gap-1">
               {[...Array(5)].map((_, i) => (
-                <span key={i} className="w-1.5 bg-accent/60 rounded-full animate-pulse" style={{ height: `${20 + (i % 3) * 12}px`, animationDelay: `${i * 120}ms`, animationDuration: "1.2s" }} />
+                <span
+                  key={i}
+                  className="w-1.5 bg-accent rounded-full animate-pulse shadow-neon-sm"
+                  style={{ height: `${20 + (i % 3) * 12}px`, animationDelay: `${i * 120}ms`, animationDuration: "1.2s" }}
+                />
               ))}
             </div>
           </div>
 
           {(state.phase === "PREPARING" || audioState === "connecting" || audioState === "subscribed") && (
-            <div role="status" className="flex items-center gap-2 text-sm text-white/65" aria-live="polite">
+            <div role="status" className="flex items-center gap-2 text-sm text-neon/65" aria-live="polite">
               <span className="w-4 h-4 rounded-full border-2 border-accent/30 border-t-accent animate-spin" aria-hidden="true" />
               {state.phase === "PREPARING"
                 ? t(audioState === "connecting" ? "board.connectingBroadcast" : "board.waitingForReady")
@@ -140,7 +144,7 @@ export default function GameBoard() {
                     }
                   })
                   .catch(() => setAudioState("error"));
-              }} className="rounded-md bg-white/10 px-3 py-1.5 font-medium text-white hover:bg-white/20">
+              }} className="rounded-md bg-white/10 px-3 py-1.5 font-medium text-neon hover:bg-white/20 hover:shadow-neon-sm transition-all duration-150">
                 {t("board.retryAudio")}
               </button>
             </div>
@@ -148,12 +152,17 @@ export default function GameBoard() {
         </div>
 
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-white/60">{t("board.otherTimelines")}</h2>
+          <h2 className="text-sm font-semibold text-neon/60">{t("board.otherTimelines")}</h2>
           <div className="grid gap-3 xl:grid-cols-2">
             {otherPlayers.map((player) => {
               const isStealTarget = selectingSteal && player.id === activePlayer?.id;
               return (
-                <article key={player.id} className={`rounded-xl border p-3 ${player.id === activePlayer?.id ? "border-accent/40 bg-accent/5" : "border-white/10 bg-white/[0.02]"}`}>
+                <article
+                  key={player.id}
+                  className={`rounded-xl border p-3 transition-all duration-200 ${
+                    player.id === activePlayer?.id ? "border-accent/40 bg-accent/5 shadow-neon-sm" : "border-white/10 bg-white/[0.02]"
+                  }`}
+                >
                   <div className="mb-2 flex items-center gap-2 text-sm font-medium">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: player.colour }} />
                     {player.name}
@@ -187,9 +196,13 @@ export default function GameBoard() {
           />
 
           {inPlacing && isActive && (
-            <div className="flex flex-col items-center gap-3">
+            <div className="flex flex-col items-center gap-3 animate-fade-in">
               {trackPrepare?.guessOptions && <SongGuessPanel options={trackPrepare.guessOptions} titleGuess={titleGuess} artistGuess={artistGuess} onSelectTitle={setTitleGuess} onSelectArtist={setArtistGuess} />}
-              <button onClick={confirmPlacement} disabled={selectedSlot === null} className="bg-accent hover:brightness-110 transition-[filter] text-white font-semibold py-2.5 px-8 rounded-lg disabled:opacity-40">
+              <button
+                onClick={confirmPlacement}
+                disabled={selectedSlot === null}
+                className="bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-2.5 px-8 rounded-lg disabled:opacity-40 disabled:hover:shadow-none"
+              >
                 {t("board.confirmPlacement")}
               </button>
             </div>
@@ -197,7 +210,7 @@ export default function GameBoard() {
         </section>
 
         {inChallenging && !isActive && (
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3 animate-fade-in">
             {!alreadyActed && (
               <CountdownRing
                 deadlineMs={state.phaseEndsAtServerMs}
@@ -207,26 +220,40 @@ export default function GameBoard() {
               />
             )}
             {canSteal && !stealMode && (
-              <button onClick={() => setStealMode(true)} className="bg-accent hover:brightness-110 transition-[filter] text-white font-semibold py-2 px-6 rounded-lg text-sm">
+              <button
+                onClick={() => setStealMode(true)}
+                className="bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-2 px-6 rounded-lg text-sm"
+              >
                 {t("board.steal")}
               </button>
             )}
             {selectingSteal && (
               <>
-                <p className="w-full text-center text-sm text-white/65">{t("board.stealing", { name: activePlayer?.name ?? "" })}</p>
-                <button onClick={confirmChallenge} disabled={challengeSlot === null} className="bg-accent hover:brightness-110 transition-[filter] text-white font-semibold py-2 px-6 rounded-lg disabled:opacity-40 text-sm">
+                <p className="w-full text-center text-sm text-neon/65">{t("board.stealing", { name: activePlayer?.name ?? "" })}</p>
+                <button
+                  onClick={confirmChallenge}
+                  disabled={challengeSlot === null}
+                  className="bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-2 px-6 rounded-lg disabled:opacity-40 disabled:hover:shadow-none text-sm"
+                >
                   {t("board.submitSteal")}
                 </button>
               </>
             )}
-            <button onClick={() => { setStealMode(false); socket?.passChallenge(); }} disabled={alreadyActed} className="bg-white/10 hover:bg-white/20 transition-colors py-2 px-6 rounded-lg text-sm disabled:opacity-40">
+            <button
+              onClick={() => { setStealMode(false); socket?.passChallenge(); }}
+              disabled={alreadyActed}
+              className="bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan active:scale-[0.97] transition-all duration-200 py-2 px-6 rounded-lg text-sm disabled:opacity-40 disabled:hover:shadow-none"
+            >
               {t("board.pass")}
             </button>
           </div>
         )}
 
         {autoplayBlocked && (
-          <button onClick={() => { audioPlayer.retryPlay(); setAutoplayBlocked(false); }} className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center text-xl font-semibold">
+          <button
+            onClick={() => { audioPlayer.retryPlay(); setAutoplayBlocked(false); }}
+            className="neon-heading fixed inset-0 z-50 bg-black/80 flex items-center justify-center text-xl font-semibold text-accent animate-glow-pulse"
+          >
             {t("board.tapToEnableSound")}
           </button>
         )}

@@ -31,7 +31,7 @@ export default function TopBar() {
     <div className="flex items-center justify-between gap-4 px-4 py-3 card-surface">
       <div className="flex items-center gap-3 min-w-0">
         <span className="text-sm font-semibold tabular-nums shrink-0">{t("board.turn", { number: state.turnNumber })}</span>
-        <span className="text-sm text-white/60 truncate">
+        <span className="text-sm text-neon/60 truncate">
           {isYourTurn ? t("board.yourTurn") : t("board.playerTurn", { name: activePlayer?.name ?? "" })}
         </span>
       </div>
@@ -47,6 +47,7 @@ export default function TopBar() {
               audioPlayer.setMuted(next);
             }}
             aria-label="mute"
+            className="hover:text-accent hover:drop-shadow-neon transition-all duration-150"
           >
             {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>
@@ -65,15 +66,18 @@ export default function TopBar() {
           />
         </div>
 
-        {connected ? <Wifi size={16} className="text-success" /> : <WifiOff size={16} className="text-danger" />}
+        {connected ? <Wifi size={16} className="text-success drop-shadow-[0_0_4px_rgba(57,255,136,0.6)]" /> : <WifiOff size={16} className="text-danger" />}
         <LanguageToggle />
 
         {state.hostId === state.youId && (
           <div className="flex items-center gap-2">
-            <button onClick={() => socket?.skipTrack()} className="text-xs bg-white/10 hover:bg-white/20 rounded-md px-2.5 py-1.5">
+            <button
+              onClick={() => socket?.skipTrack()}
+              className="text-xs bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan transition-all duration-150 rounded-md px-2.5 py-1.5"
+            >
               {t("board.skip")}
             </button>
-            <button onClick={() => socket?.endGame()} className="text-xs text-danger/80 hover:text-danger px-2">
+            <button onClick={() => socket?.endGame()} className="text-xs text-danger/80 hover:text-danger transition-colors px-2">
               {t("board.endGame")}
             </button>
           </div>

@@ -31,28 +31,30 @@ export default function AccessGatePage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-bg">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(60% 60% at 30% 20%, rgba(232,115,74,0.12), transparent), radial-gradient(50% 50% at 80% 80%, rgba(63,185,132,0.10), transparent)",
+            "radial-gradient(60% 60% at 30% 20%, rgba(255,43,214,0.18), transparent), radial-gradient(50% 50% at 80% 80%, rgba(0,229,255,0.14), transparent)",
         }}
       />
+      <div aria-hidden className="neon-grid-floor pointer-events-none absolute inset-x-0 bottom-0 h-1/2 animate-grid-scroll" />
       <LanguageToggle className="absolute top-6 right-6" />
 
       <motion.form
         onSubmit={submit}
         key={shake}
-        animate={error ? { x: [0, -10, 10, -8, 8, -4, 4, 0] } : {}}
+        initial={{ opacity: 0, y: 12 }}
+        animate={error ? { opacity: 1, y: 0, x: [0, -10, 10, -8, 8, -4, 4, 0] } : { opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="relative card-surface w-full max-w-sm mx-4 p-8 flex flex-col items-center gap-6"
+        className="relative card-surface shadow-neon w-full max-w-sm mx-4 p-8 flex flex-col items-center gap-6"
       >
-        <div className="text-2xl font-semibold tracking-tight text-accent">{t("app.name")}</div>
+        <div className="neon-heading text-2xl font-semibold tracking-tight text-accent">{t("app.name")}</div>
         <div className="text-center">
           <h1 className="text-lg font-semibold">{t("gate.title")}</h1>
-          <p className="text-sm text-white/60 mt-1">{t("gate.subtitle")}</p>
+          <p className="text-sm text-neon/60 mt-1">{t("gate.subtitle")}</p>
         </div>
 
         <input
@@ -60,7 +62,7 @@ export default function AccessGatePage() {
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           placeholder={t("gate.codePlaceholder")}
-          className="w-full text-center text-xl font-mono tracking-[0.3em] bg-black/30 border border-border rounded-lg py-3 px-4 outline-none focus:border-accent transition-colors"
+          className="neon-focus w-full text-center text-xl font-mono tracking-[0.3em] bg-black/30 border border-border rounded-lg py-3 px-4 outline-none focus:border-accent transition-colors"
           maxLength={32}
         />
 
@@ -69,7 +71,7 @@ export default function AccessGatePage() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full bg-accent hover:brightness-110 transition-[filter] duration-150 text-white font-semibold py-3 rounded-lg disabled:opacity-50"
+          className="w-full bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-3 rounded-lg disabled:opacity-50 disabled:hover:shadow-none"
         >
           {t("gate.submit")}
         </button>

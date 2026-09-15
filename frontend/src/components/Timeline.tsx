@@ -72,13 +72,23 @@ export default function Timeline({
           {slotPreviews.length > 0 && (
             <span className="absolute -top-1 left-1/2 flex -translate-x-1/2 gap-0.5" aria-label={slotPreviews.map((p) => p.name).join(", ")}>
               {slotPreviews.map((preview) => (
-                <span key={preview.playerId} className="w-2.5 h-2.5 rounded-full ring-2 ring-bg" style={{ backgroundColor: preview.colour }} title={preview.name} />
+                <span
+                  key={preview.playerId}
+                  className="w-2.5 h-2.5 rounded-full ring-2 ring-bg"
+                  style={{ backgroundColor: preview.colour, boxShadow: `0 0 6px ${preview.colour}` }}
+                  title={preview.name}
+                />
               ))}
             </span>
           )}
-          {isPlacement && <span className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full bg-accent" aria-label="submitted placement" />}
+          {isPlacement && (
+            <span className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full bg-accent shadow-neon-sm" aria-label="submitted placement" />
+          )}
           {isPreview && (
-            <span className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full border-2 border-accent bg-accent/30 animate-pulse" aria-label="selecting placement" />
+            <span
+              className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full border-2 border-accent bg-accent/30 animate-glow-pulse"
+              aria-label="selecting placement"
+            />
           )}
         </div>
       );
@@ -94,13 +104,13 @@ export default function Timeline({
         aria-label={`slot-${slot}`}
         className={`relative shrink-0 w-8 h-20 sm:h-24 rounded-md transition-all duration-150 ease-game ${
           isSelected
-            ? "bg-accent/30 border-2 border-accent scale-105"
+            ? "bg-accent/30 border-2 border-accent scale-105 shadow-neon"
             : isTaken
               ? "bg-white/5 border border-white/10 cursor-not-allowed"
               : isDisabled
                 ? "bg-white/[0.02] border border-transparent cursor-not-allowed"
                 : clickable
-                  ? "bg-white/5 border border-dashed border-white/20 hover:border-accent/60 hover:bg-accent/10"
+                  ? "bg-white/5 border border-dashed border-neon/25 hover:border-accent/70 hover:bg-accent/10 hover:shadow-neon-sm"
                   : "bg-transparent border-transparent"
         }`}
       >
@@ -108,13 +118,23 @@ export default function Timeline({
         {slotPreviews.length > 0 && (
           <span className="absolute -top-1 left-1/2 flex -translate-x-1/2 gap-0.5" aria-label={slotPreviews.map((p) => p.name).join(", ")}>
             {slotPreviews.map((preview) => (
-              <span key={preview.playerId} className="w-2.5 h-2.5 rounded-full ring-2 ring-bg" style={{ backgroundColor: preview.colour }} title={preview.name} />
+              <span
+                key={preview.playerId}
+                className="w-2.5 h-2.5 rounded-full ring-2 ring-bg"
+                style={{ backgroundColor: preview.colour, boxShadow: `0 0 6px ${preview.colour}` }}
+                title={preview.name}
+              />
             ))}
           </span>
         )}
-        {isPlacement && <span className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full bg-accent" aria-label="submitted placement" />}
+        {isPlacement && (
+          <span className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full bg-accent shadow-neon-sm" aria-label="submitted placement" />
+        )}
         {isPreview && (
-          <span className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full border-2 border-accent bg-accent/30 animate-pulse" aria-label="selecting placement" />
+          <span
+            className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full border-2 border-accent bg-accent/30 animate-glow-pulse"
+            aria-label="selecting placement"
+          />
         )}
       </button>
     );
@@ -135,15 +155,15 @@ export default function Timeline({
             <div
               className={`shrink-0 card-surface flex flex-col items-center justify-center transition-all duration-200 ease-game ${
                 compact ? "w-14 h-20" : size === "large" ? "w-24 h-32 sm:w-28 sm:h-36" : "w-20 h-28"
-              } ${highlightSlot === i && highlightCorrect === true ? "!border-success border-2" : ""} ${
-                highlightSlot === i && highlightCorrect === false ? "!border-danger border-2" : ""
+              } ${highlightSlot === i && highlightCorrect === true ? "!border-success border-2 shadow-[0_0_16px_rgba(57,255,136,0.4)]" : ""} ${
+                highlightSlot === i && highlightCorrect === false ? "!border-danger border-2 shadow-[0_0_16px_rgba(255,56,100,0.4)]" : ""
               }`}
             >
-              <span className={`font-semibold tabular-nums ${compact ? "text-base" : "text-xl"}`}>{card.year}</span>
+              <span className={`neon-heading font-semibold tabular-nums text-accent ${compact ? "text-base" : "text-xl"}`}>{card.year}</span>
               <span className={`mt-1 px-1 text-center font-medium leading-tight line-clamp-2 ${compact ? "text-[8px]" : "text-[10px]"}`}>
                 {card.title}
               </span>
-              {!compact && <span className="text-[10px] text-white/40 mt-0.5 px-1 text-center line-clamp-1">{card.artist}</span>}
+              {!compact && <span className="text-[10px] text-neon/40 mt-0.5 px-1 text-center line-clamp-1">{card.artist}</span>}
             </div>
             {renderSlot(i + 1)}
           </div>

@@ -33,19 +33,22 @@ export default function AdminPage() {
 
   if (!authenticated) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center px-4">
+      <div className="min-h-screen flex items-center justify-center px-4 animate-fade-in">
         <form onSubmit={login} className="card-surface w-full max-w-sm p-8 flex flex-col gap-4">
-          <h1 className="text-lg font-semibold">{t("admin.login.title")}</h1>
+          <h1 className="neon-heading text-lg font-semibold">{t("admin.login.title")}</h1>
           <input
             type="password"
             autoFocus
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder={t("admin.login.passwordPlaceholder")}
-            className="bg-black/30 border border-border rounded-lg py-2.5 px-3 outline-none focus:border-accent"
+            className="neon-focus bg-black/30 border border-border rounded-lg py-2.5 px-3 outline-none focus:border-accent transition-colors"
           />
           {error && <p className="text-danger text-sm">{error}</p>}
-          <button type="submit" className="bg-accent hover:brightness-110 text-white font-semibold py-2.5 rounded-lg">
+          <button
+            type="submit"
+            className="bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-2.5 rounded-lg"
+          >
             {t("admin.login.submit")}
           </button>
         </form>
@@ -54,13 +57,15 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg p-6 text-sm">
+    <div className="min-h-screen p-6 text-sm animate-fade-in">
       <nav className="flex gap-2 mb-6">
         {(["overview", "library", "exclusions", "games"] as Tab[]).map((tabName) => (
           <button
             key={tabName}
             onClick={() => setTab(tabName)}
-            className={`px-4 py-2 rounded-md ${tab === tabName ? "bg-accent text-white" : "bg-white/5 hover:bg-white/10"}`}
+            className={`px-4 py-2 rounded-md transition-all duration-150 ${
+              tab === tabName ? "bg-accent text-white shadow-neon-sm" : "bg-white/5 hover:bg-white/10"
+            }`}
           >
             {t(`admin.nav.${tabName}`)}
           </button>
@@ -98,7 +103,7 @@ function OverviewTab() {
         <tbody>
           {rows.map(([label, value]) => (
             <tr key={label} className="border-b border-border">
-              <td className="py-2 text-white/60">{label}</td>
+              <td className="py-2 text-neon/60">{label}</td>
               <td className="py-2 text-right font-mono">{String(value)}</td>
             </tr>
           ))}
@@ -106,7 +111,7 @@ function OverviewTab() {
       </table>
       <button
         onClick={() => void api.adminResyncLibrary().then(load)}
-        className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-4 py-2"
+        className="bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan transition-all duration-150 rounded-md px-4 py-2"
       >
         {t("admin.overview.resync")}
       </button>
@@ -162,9 +167,13 @@ function LibraryTab() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t("admin.library.search")}
-          className="bg-black/30 border border-border rounded-lg py-2 px-3 outline-none focus:border-accent flex-1 max-w-sm"
+          className="neon-focus bg-black/30 border border-border rounded-lg py-2 px-3 outline-none focus:border-accent flex-1 max-w-sm transition-colors"
         />
-        <select value={excluded} onChange={(e) => setExcluded(e.target.value)} className="bg-black/30 border border-border rounded-lg py-2 px-3">
+        <select
+          value={excluded}
+          onChange={(e) => setExcluded(e.target.value)}
+          className="neon-focus bg-black/30 border border-border rounded-lg py-2 px-3 transition-colors"
+        >
           <option value="">{t("admin.library.filterAll")}</option>
           <option value="true">{t("admin.library.filterExcluded")}</option>
           <option value="false">{t("admin.library.filterIncluded")}</option>
@@ -173,7 +182,7 @@ function LibraryTab() {
 
       <div className="overflow-x-auto">
         <table className="w-full text-left">
-          <thead className="text-white/50 text-xs uppercase">
+          <thead className="text-neon/50 text-xs uppercase">
             <tr>
               <th className="py-2 pr-3">{t("admin.library.columnTitle")}</th>
               <th className="py-2 pr-3">{t("admin.library.columnArtist")}</th>
@@ -186,21 +195,21 @@ function LibraryTab() {
           </thead>
           <tbody>
             {tracks.map((track) => (
-              <tr key={track.id} className="border-b border-border/50">
+              <tr key={track.id} className="border-b border-border/50 hover:bg-white/[0.03] transition-colors">
                 <td className="py-2 pr-3">{track.title}</td>
                 <td className="py-2 pr-3">{track.artist}</td>
-                <td className="py-2 pr-3 text-white/50">{track.album}</td>
+                <td className="py-2 pr-3 text-neon/50">{track.album}</td>
                 <td className="py-2 pr-3 tabular-nums">{track.navidromeYear ?? "—"}</td>
                 <td className="py-2 pr-3 tabular-nums">{track.overrideYear ?? "—"}</td>
                 <td className="py-2 pr-3">{track.excludedKind ?? "—"}</td>
                 <td className="py-2 flex gap-2 whitespace-nowrap">
-                  <button onClick={() => toggleExclude(track)} className="text-accent hover:underline">
+                  <button onClick={() => toggleExclude(track)} className="text-accent hover:underline hover:drop-shadow-neon transition-all">
                     {track.excludedKind ? t("admin.library.include") : t("admin.library.exclude")}
                   </button>
-                  <button onClick={() => lookupYear(track.id)} className="text-white/60 hover:underline">
+                  <button onClick={() => lookupYear(track.id)} className="text-neon/60 hover:underline">
                     {t("admin.library.lookupYear")}
                   </button>
-                  <button onClick={() => setOverride(track.id)} className="text-white/60 hover:underline">
+                  <button onClick={() => setOverride(track.id)} className="text-neon/60 hover:underline">
                     {t("admin.library.setOverride")}
                   </button>
                 </td>
@@ -226,19 +235,19 @@ function ExclusionsTab() {
   const load = () => void api.adminListExclusions().then((res) => setExclusions((res.exclusions as typeof exclusions) ?? []));
   useEffect(load, []);
 
-  if (exclusions.length === 0) return <p className="text-white/50">{t("admin.exclusions.empty")}</p>;
+  if (exclusions.length === 0) return <p className="text-neon/50">{t("admin.exclusions.empty")}</p>;
 
   return (
     <ul className="flex flex-col gap-2 max-w-2xl">
       {exclusions.map((e) => (
         <li key={`${e.kind}-${e.refId}`} className="card-surface p-3 flex items-center justify-between">
           <div>
-            <span className="text-xs uppercase text-white/40 mr-2">{e.kind}</span>
+            <span className="text-xs uppercase text-neon/40 mr-2">{e.kind}</span>
             {e.label}
           </div>
           <button
             onClick={() => void api.adminDeleteExclusion(e.kind, e.refId).then(load)}
-            className="text-danger/80 hover:text-danger text-xs"
+            className="text-danger/80 hover:text-danger transition-colors text-xs"
           >
             {t("common.remove")}
           </button>
@@ -263,7 +272,7 @@ function GamesTab() {
 
   return (
     <table className="w-full text-left max-w-3xl">
-      <thead className="text-white/50 text-xs uppercase">
+      <thead className="text-neon/50 text-xs uppercase">
         <tr>
           <th className="py-2 pr-3">{t("admin.games.inviteCode")}</th>
           <th className="py-2 pr-3">{t("admin.games.phase")}</th>
@@ -274,13 +283,16 @@ function GamesTab() {
       </thead>
       <tbody>
         {games.map((g) => (
-          <tr key={g.gameId} className="border-b border-border/50">
+          <tr key={g.gameId} className="border-b border-border/50 hover:bg-white/[0.03] transition-colors">
             <td className="py-2 pr-3 font-mono">{g.inviteCode}</td>
             <td className="py-2 pr-3">{g.phase}</td>
             <td className="py-2 pr-3 tabular-nums">{g.playerCount}</td>
             <td className="py-2 pr-3 tabular-nums">{g.turnNumber}</td>
             <td className="py-2">
-              <button onClick={() => void api.adminForceEndGame(g.gameId).then(load)} className="text-danger/80 hover:text-danger">
+              <button
+                onClick={() => void api.adminForceEndGame(g.gameId).then(load)}
+                className="text-danger/80 hover:text-danger transition-colors"
+              >
                 {t("admin.games.forceEnd")}
               </button>
             </td>

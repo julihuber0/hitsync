@@ -42,14 +42,14 @@ export default function CountdownRing({ deadlineMs, totalMs, serverNow, size = 5
 
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={radius} stroke="rgba(255,255,255,0.1)" strokeWidth={4} fill="none" />
+      <svg width={size} height={size} className="-rotate-90 drop-shadow-neon">
+        <circle cx={size / 2} cy={size / 2} r={radius} stroke="rgba(255,190,247,0.14)" strokeWidth={4} fill="none" />
         <circle
           ref={ref}
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="#e8734a"
+          stroke="#ff2bd6"
           strokeWidth={4}
           fill="none"
           strokeDasharray={circumference}
@@ -58,7 +58,7 @@ export default function CountdownRing({ deadlineMs, totalMs, serverNow, size = 5
           style={{ transition: deadlineMs === null ? "none" : "stroke-dashoffset 0.1s linear" }}
         />
       </svg>
-      <span ref={labelRef} className="absolute text-xs font-semibold tabular-nums" />
+      <span ref={labelRef} className="absolute text-xs font-semibold tabular-nums text-neon" />
     </div>
   );
 }

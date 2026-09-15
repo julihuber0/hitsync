@@ -1,4 +1,5 @@
 @import "@fontsource-variable/inter";
+@import "@fontsource-variable/orbitron";
 
 @tailwind base;
 @tailwind components;
@@ -11,8 +12,13 @@ body,
 }
 
 body {
-  @apply bg-bg text-white antialiased;
+  @apply bg-bg text-neon antialiased;
   font-family: "InterVariable", "Inter", system-ui, sans-serif;
+  background-image:
+    radial-gradient(60% 45% at 15% 0%, rgba(255, 43, 214, 0.16), transparent),
+    radial-gradient(55% 45% at 100% 15%, rgba(0, 229, 255, 0.12), transparent),
+    radial-gradient(70% 60% at 50% 100%, rgba(255, 43, 214, 0.08), transparent);
+  background-attachment: fixed;
 }
 
 .tabular-nums {
@@ -30,6 +36,30 @@ body {
 }
 
 .card-surface {
-  @apply bg-surface border border-[rgba(255,255,255,0.08)] rounded-card;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  @apply bg-surface/70 border border-[rgba(255,190,247,0.16)] rounded-card backdrop-blur-sm;
+  box-shadow: var(--tw-shadow, inset 0 1px 0 rgba(255, 255, 255, 0.06)), 0 0 32px rgba(255, 43, 214, 0.06);
+}
+
+/* Retro synthwave heading treatment: display font, neon glow, wide tracking. */
+.neon-heading {
+  font-family: "Orbitron Variable", "InterVariable", sans-serif;
+  letter-spacing: 0.04em;
+  text-shadow:
+    0 0 6px rgba(255, 190, 247, 0.55),
+    0 0 18px rgba(255, 43, 214, 0.35);
+}
+
+/* Decorative retro grid floor, used sparingly on landing-style screens. */
+.neon-grid-floor {
+  background-image:
+    linear-gradient(rgba(255, 43, 214, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 43, 214, 0.18) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to top, black, transparent 85%);
+}
+
+/* Neon glow focus ring, replacing the default outline on interactive controls. */
+.neon-focus:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 43, 214, 0.55);
 }
