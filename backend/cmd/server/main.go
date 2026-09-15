@@ -13,10 +13,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/julianhuber/hitsync/backend/internal/broadcast"
 	"github.com/julianhuber/hitsync/backend/internal/config"
 	"github.com/julianhuber/hitsync/backend/internal/gamesvc"
 	"github.com/julianhuber/hitsync/backend/internal/httpapi"
 	"github.com/julianhuber/hitsync/backend/internal/library"
+	"github.com/julianhuber/hitsync/backend/internal/livekit"
 	"github.com/julianhuber/hitsync/backend/internal/musicbrainz"
 	"github.com/julianhuber/hitsync/backend/internal/navidrome"
 	"github.com/julianhuber/hitsync/backend/internal/store"
@@ -70,6 +72,8 @@ func main() {
 
 	issuer := tokens.NewIssuer(cfg.JWTSecret)
 	mediaSigner := tokens.NewMediaSigner(cfg.MediaSharedSecret)
+	broadcaster := broadcast.New(cfg.MediaInternalURL)
+	livekitTokens := livekit.NewTokenIssuer(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret, 2*time.Hour)
 
 	gsCfg := gamesvc.Config{
 		MinPlayers: cfg.MinPlayers, MaxPlayers: cfg.MaxPlayers, MaxConcurrentGames: cfg.MaxConcurrentGames,
@@ -81,9 +85,9 @@ func main() {
 		PlayerReconnectGrace: cfg.PlayerReconnectGrace, LobbyIdleTimeout: cfg.LobbyIdleTimeout,
 		SkipRateLimit:      10 * time.Second,
 		YearLookaheadDepth: cfg.YearLookaheadDepth, YearLookupTimeout: cfg.YearLookupTimeout,
-		AppDomain: cfg.AppDomain, MediaBaseURL: cfg.MediaOrigin(), MediaTTL: 30 * time.Minute,
+		AppDomain: cfg.AppDomain, LiveKitURL: cfg.LiveKitURL, LiveKitTokenTTL: 2 * time.Hour, MediaTTL: 30 * time.Minute,
 	}
-	manager := gamesvc.NewManager(gsCfg, st, trackSource, mediaSigner, issuer, log)
+	manager := gamesvc.NewManager(gsCfg, st, trackSource, mediaSigner, broadcaster, livekitTokens, issuer, log)
 	manager.RehydrateFromSnapshots(ctx)
 	go manager.RunJanitor(ctx)
 

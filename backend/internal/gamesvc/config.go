@@ -23,7 +23,8 @@ type Config struct {
 	YearLookaheadDepth int
 	YearLookupTimeout  time.Duration
 
-	AppDomain    string
-	MediaBaseURL string
-	MediaTTL     time.Duration
+	AppDomain       string
+	LiveKitURL      string
+	LiveKitTokenTTL time.Duration
+	MediaTTL        time.Duration
 }

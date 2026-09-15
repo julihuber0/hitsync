@@ -57,7 +57,7 @@ type PongPayload struct {
 	S  int64 `json:"s"`
 }
 
-// ReadyPayload acknowledges a track_prepare.
+// ReadyPayload acknowledges a LiveKit room subscription during PREPARING.
 type ReadyPayload struct {
 	PrepareID string `json:"prepareId"`
 }
@@ -97,12 +97,14 @@ type KickedPayload struct {
 	Reason string `json:"reason"`
 }
 
-// TrackPreparePayload announces a track to buffer (§10.4). GuessOptions is
-// only populated on the envelope sent to the active player's own socket.
+// TrackPreparePayload gives a player a short-lived, subscribe-only LiveKit
+// token. GuessOptions is only populated for the active player's socket.
 type TrackPreparePayload struct {
 	PrepareID    string        `json:"prepareId"`
 	TrackID      string        `json:"trackId"`
-	StreamURL    string        `json:"streamUrl"`
+	LiveKitURL   string        `json:"livekitUrl"`
+	LiveKitToken string        `json:"livekitToken"`
+	RoomName     string        `json:"roomName"`
 	DurationMs   int64         `json:"durationMs"`
 	GuessOptions *GuessOptions `json:"guessOptions,omitempty"`
 }
@@ -113,11 +115,10 @@ type GuessOptions struct {
 	Artists []string `json:"artists"`
 }
 
-// TrackStartPayload tells clients exactly when to hit play (§10.4).
+// TrackStartPayload marks the point where the server begins feeding the
+// already-subscribed LiveKit track. It intentionally has no client clock.
 type TrackStartPayload struct {
-	PrepareID       string `json:"prepareId"`
-	StartAtServerMs int64  `json:"startAtServerMs"`
-	DurationMs      int64  `json:"durationMs"`
+	PrepareID string `json:"prepareId"`
 }
 
 // TrackStopPayload tells clients to fade out and stop.

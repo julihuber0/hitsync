@@ -14,6 +14,14 @@ volumes:
   navidrome-dev-data:
 
 services:
+  livekit:
+    image: livekit/livekit:v1.8.3
+    command: --dev --bind 0.0.0.0
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "50000-50020:50000-50020/udp"
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped

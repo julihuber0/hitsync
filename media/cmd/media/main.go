@@ -1,4 +1,4 @@
-// Command media is Hitsync's dedicated audio-streaming service (§10.1).
+// Command media is Hitsync's private LiveKit broadcast worker.
 package main
 
 import (
@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/julianhuber/hitsync/media/internal/broadcast"
 	"github.com/julianhuber/hitsync/media/internal/cache"
 	"github.com/julianhuber/hitsync/media/internal/config"
 	"github.com/julianhuber/hitsync/media/internal/tokens"
@@ -41,11 +42,15 @@ func main() {
 	}, cfg.AudioFormat, cfg.AudioBitrate, c, 60*time.Second)
 
 	verifier := tokens.NewVerifier(cfg.MediaSharedSecret)
+	b := broadcast.New(broadcast.Config{
+		LiveKitURL: cfg.LiveKitURL, APIKey: cfg.LiveKitAPIKey, APISecret: cfg.LiveKitAPISecret, FFmpegPath: cfg.FFmpegPath,
+	}, log)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /stream/{trackId}", streamHandler(log, cfg, c, fetcher, verifier))
+	mux.HandleFunc("POST /broadcast/{trackId}/prepare", prepareHandler(log, c, fetcher, verifier, b))
+	mux.HandleFunc("POST /broadcast/{trackId}/start", startHandler(log, c, verifier, b))
+	mux.HandleFunc("POST /broadcast/{trackId}/stop", stopHandler(verifier, b))
 	mux.HandleFunc("GET /healthz", healthzHandler(cfg))
-	mux.HandleFunc("GET /time", timeHandler)
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
@@ -55,13 +60,8 @@ func main() {
 
 	go func() {
 		var err error
-		if cfg.MediaTLSCert != "" {
-			log.Info("media service listening (TLS)", "addr", srv.Addr)
-			err = srv.ListenAndServeTLS(cfg.MediaTLSCert, cfg.MediaTLSKey)
-		} else {
-			log.Info("media service listening", "addr", srv.Addr)
-			err = srv.ListenAndServe()
-		}
+		log.Info("media broadcast service listening", "addr", srv.Addr)
+		err = srv.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
 			log.Error("server error", "error", err)
 			os.Exit(1)
@@ -90,61 +90,65 @@ func parseLevel(s string) slog.Level {
 	}
 }
 
-func streamHandler(log *slog.Logger, cfg *config.Config, c *cache.Cache, fetcher *upstream.Fetcher, verifier *tokens.Verifier) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		trackID := r.PathValue("trackId")
-		token := r.URL.Query().Get("token")
+func verifyBroadcast(r *http.Request, verifier *tokens.Verifier) (string, bool) {
+	trackID := r.PathValue("trackId")
+	payload, err := verifier.Verify(r.URL.Query().Get("token"), trackID)
+	if err != nil {
+		return "", false
+	}
+	return payload.GameID, true
+}
 
-		if _, err := verifier.Verify(token, trackID); err != nil {
+func prepareHandler(log *slog.Logger, c *cache.Cache, fetcher *upstream.Fetcher, verifier *tokens.Verifier, b *broadcast.Broadcaster) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		gameID, ok := verifyBroadcast(r, verifier)
+		if !ok {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-
-		w.Header().Set("Access-Control-Allow-Origin", cfg.AppOrigin())
-		w.Header().Set("Cross-Origin-Resource-Policy", "cross-origin")
-		w.Header().Set("Cache-Control", "private, max-age=3600")
-
-		if c.Has(trackID) {
-			c.Touch(trackID)
-			serveFromCache(w, r, c, trackID)
+		trackID := r.PathValue("trackId")
+		if err := fetcher.Ensure(trackID); err != nil {
+			log.Error("failed to cache broadcast source", "track_id", trackID, "error", err)
+			http.Error(w, "upstream fetch failed", http.StatusBadGateway)
 			return
 		}
-
-		servedDirectly, err := fetcher.Obtain(trackID, w)
-		if err != nil {
-			log.Error("upstream fetch failed", "track_id", trackID, "error", err)
-			if !servedDirectly {
-				http.Error(w, "upstream fetch failed", http.StatusBadGateway)
-			}
-			return
-		}
-		if servedDirectly {
-			return
-		}
-		// This request was a follower: the file is now cached.
 		c.Touch(trackID)
-		serveFromCache(w, r, c, trackID)
+		if err := b.Prepare(r.Context(), gameID, trackID); err != nil {
+			log.Error("failed to prepare LiveKit broadcast", "game_id", gameID, "track_id", trackID, "error", err)
+			http.Error(w, "broadcast unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
-func serveFromCache(w http.ResponseWriter, r *http.Request, c *cache.Cache, trackID string) {
-	path := c.Path(trackID)
-	f, err := os.Open(path)
-	if err != nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
+func startHandler(log *slog.Logger, c *cache.Cache, verifier *tokens.Verifier, b *broadcast.Broadcaster) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		gameID, ok := verifyBroadcast(r, verifier)
+		if !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		trackID := r.PathValue("trackId")
+		if err := b.Start(gameID, trackID, c.Path(trackID)); err != nil {
+			log.Error("failed to start LiveKit broadcast", "game_id", gameID, "track_id", trackID, "error", err)
+			http.Error(w, "broadcast unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
-	defer f.Close()
+}
 
-	info, err := f.Stat()
-	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
+func stopHandler(verifier *tokens.Verifier, b *broadcast.Broadcaster) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		gameID, ok := verifyBroadcast(r, verifier)
+		if !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		b.Stop(gameID, r.PathValue("trackId"))
+		w.WriteHeader(http.StatusNoContent)
 	}
-
-	w.Header().Set("Content-Type", "audio/mpeg")
-	w.Header().Set("Accept-Ranges", "bytes")
-	http.ServeContent(w, r, trackID+".mp3", info.ModTime(), f)
 }
 
 func healthzHandler(cfg *config.Config) http.HandlerFunc {
@@ -159,9 +163,4 @@ func healthzHandler(cfg *config.Config) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	}
-}
-
-func timeHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{"serverTimeMs":%d}`, time.Now().UnixMilli())
 }

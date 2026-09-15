@@ -4,7 +4,9 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/julianhuber/hitsync/backend/internal/broadcast"
 	"github.com/julianhuber/hitsync/backend/internal/game"
+	"github.com/julianhuber/hitsync/backend/internal/livekit"
 	"github.com/julianhuber/hitsync/backend/internal/store"
 	"github.com/julianhuber/hitsync/backend/internal/tokens"
 	"github.com/julianhuber/hitsync/backend/internal/ws"
@@ -19,11 +21,9 @@ type pendingSongGuess struct {
 // lastPrepare captures enough of the current/last PREPARING+PLACING
 // broadcast to replay it to a reconnecting client (§13.4).
 type lastPrepare struct {
-	prepareID       string
-	trackID         string
-	streamURL       string
-	durationMs      int64
-	startAtServerMs int64 // 0 if track_start hasn't been sent yet
+	prepareID  string
+	trackID    string
+	durationMs int64
 }
 
 // ManagedGame owns one game's authoritative state, mutated only from its own
@@ -56,15 +56,17 @@ type ManagedGame struct {
 	startedAt time.Time
 	turnCount int
 
-	trackSource *TrackSource
-	mediaSigner *tokens.MediaSigner
-	store       *store.Store
-	log         *slog.Logger
-	cfg         Config
-	manager     *Manager
+	trackSource   *TrackSource
+	mediaSigner   *tokens.MediaSigner
+	broadcaster   broadcast.Controller
+	livekitTokens *livekit.TokenIssuer
+	store         *store.Store
+	log           *slog.Logger
+	cfg           Config
+	manager       *Manager
 }
 
-func newManagedGame(id, inviteCode string, settings game.Settings, ts *TrackSource, signer *tokens.MediaSigner, st *store.Store, cfg Config, log *slog.Logger, mgr *Manager) *ManagedGame {
+func newManagedGame(id, inviteCode string, settings game.Settings, ts *TrackSource, signer *tokens.MediaSigner, broadcaster broadcast.Controller, livekitTokens *livekit.TokenIssuer, st *store.Store, cfg Config, log *slog.Logger, mgr *Manager) *ManagedGame {
 	mg := &ManagedGame{
 		id:              id,
 		inviteCode:      inviteCode,
@@ -77,6 +79,8 @@ func newManagedGame(id, inviteCode string, settings game.Settings, ts *TrackSour
 		createdAt:       time.Now(),
 		trackSource:     ts,
 		mediaSigner:     signer,
+		broadcaster:     broadcaster,
+		livekitTokens:   livekitTokens,
 		store:           st,
 		log:             log,
 		cfg:             cfg,
@@ -117,6 +121,7 @@ func (mg *ManagedGame) call(fn func()) {
 }
 
 func (mg *ManagedGame) stop() {
+	mg.stopBroadcast()
 	close(mg.stopCh)
 }
 

@@ -52,15 +52,15 @@ export interface GuessOptions {
 export interface TrackPreparePayload {
   prepareId: string;
   trackId: string;
-  streamUrl: string;
+  livekitUrl: string;
+  livekitToken: string;
+  roomName: string;
   durationMs: number;
   guessOptions?: GuessOptions;
 }
 
 export interface TrackStartPayload {
   prepareId: string;
-  startAtServerMs: number;
-  durationMs: number;
 }
 
 export interface TrackStopPayload {

@@ -81,17 +81,13 @@ func New(nav Navidrome, format string, bitrate int, c *cache.Cache, timeout time
 	}
 }
 
-// Obtain ensures trackID ends up in the cache. If this caller is the first
-// to request the track (the "leader"), it streams the upstream response
-// directly to w while simultaneously writing it to the temp cache file, and
-// reports servedDirectly=true — the HTTP handler must not write anything
-// else in that case. Any other concurrent caller (a "follower") blocks until
-// the leader finishes and reports servedDirectly=false, so the handler can
-// serve the now-complete file itself with Range support via
-// http.ServeContent (§10.1 "concurrent miss").
-func (f *Fetcher) Obtain(trackID string, w http.ResponseWriter) (servedDirectly bool, err error) {
+// Ensure downloads trackID to the local cache once. Audio files are never
+// returned to a browser: the LiveKit publisher consumes the cached file.
+// Concurrent calls for the same track wait for the leader rather than causing
+// duplicate Navidrome transcodes.
+func (f *Fetcher) Ensure(trackID string) error {
 	if f.cache.Has(trackID) {
-		return false, nil
+		return nil
 	}
 
 	f.mu.Lock()
@@ -99,26 +95,26 @@ func (f *Fetcher) Obtain(trackID string, w http.ResponseWriter) (servedDirectly 
 		f.mu.Unlock()
 		<-ch
 		if f.cache.Has(trackID) {
-			return false, nil
+			return nil
 		}
-		return false, fmt.Errorf("upstream fetch failed for track %s", trackID)
+		return fmt.Errorf("upstream fetch failed for track %s", trackID)
 	}
 
 	ch := make(chan struct{})
 	f.inFlight[trackID] = ch
 	f.mu.Unlock()
 
-	err = f.fetchAndStream(trackID, w)
+	err := f.fetchToCache(trackID)
 
 	f.mu.Lock()
 	delete(f.inFlight, trackID)
 	f.mu.Unlock()
 	close(ch)
 
-	return true, err
+	return err
 }
 
-func (f *Fetcher) fetchAndStream(trackID string, w http.ResponseWriter) error {
+func (f *Fetcher) fetchToCache(trackID string) error {
 	reqURL, err := f.nav.streamURL(trackID, f.format, f.bitrate)
 	if err != nil {
 		return err
@@ -139,11 +135,7 @@ func (f *Fetcher) fetchAndStream(trackID string, w http.ResponseWriter) error {
 		return err
 	}
 
-	w.Header().Set("Content-Type", "audio/mpeg")
-	w.WriteHeader(http.StatusOK)
-
-	dest := io.MultiWriter(w, tmpFile)
-	n, copyErr := io.Copy(dest, resp.Body)
+	n, copyErr := io.Copy(tmpFile, resp.Body)
 	closeErr := tmpFile.Close()
 
 	if copyErr != nil || closeErr != nil {

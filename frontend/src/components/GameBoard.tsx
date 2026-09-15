@@ -36,21 +36,20 @@ export default function GameBoard() {
     setArtistGuess(null);
   }, [trackPrepare?.prepareId]);
 
-  // Audio lifecycle (§10.4), driven by server broadcasts.
+  // Subscribe to the server's LiveKit broadcast during PREPARING.
   useEffect(() => {
     if (!trackPrepare) return;
     if (readySentFor.current === trackPrepare.prepareId) return;
     readySentFor.current = trackPrepare.prepareId;
     audioPlayer.onAutoplayBlocked = () => setAutoplayBlocked(true);
-    void audioPlayer.prepare(trackPrepare.streamUrl, trackPrepare.durationMs).then(() => {
-      socket?.ready(trackPrepare.prepareId);
-    });
+    void audioPlayer.prepare(trackPrepare.livekitUrl, trackPrepare.livekitToken)
+      .then(() => socket?.ready(trackPrepare.prepareId))
+      .catch(() => setAutoplayBlocked(true));
   }, [trackPrepare, socket]);
 
   useEffect(() => {
     if (!trackStart) return;
-    const serverNow = () => useGameStore.getState().socket?.clock.serverNow() ?? Date.now();
-    audioPlayer.start(trackStart.startAtServerMs, trackStart.durationMs, serverNow);
+    audioPlayer.start();
     setAutoplayBlocked(false);
   }, [trackStart]);
 

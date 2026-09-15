@@ -1,5 +1,5 @@
 // Package tokens issues and verifies the JWTs used for the app-access gate,
-// admin sessions, and player identity, plus the HMAC media stream tokens
+// admin sessions, player identity, and HMAC media-control tokens
 // shared with the media service.
 package tokens
 

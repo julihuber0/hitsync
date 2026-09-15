@@ -10,15 +10,14 @@ import (
 	"time"
 )
 
-// MediaPayload is the signed payload embedded in a media stream token.
+// MediaPayload is the signed payload embedded in a private broadcast-control token.
 type MediaPayload struct {
 	TrackID string `json:"t"`
 	GameID  string `json:"g"`
 	Exp     int64  `json:"exp"`
 }
 
-// MediaSigner mints and verifies HMAC-signed stream tokens shared with the
-// media service (§10.2). Neither service needs to call the other.
+// MediaSigner mints HMAC-signed control tokens shared with the media worker.
 type MediaSigner struct {
 	secret []byte
 }

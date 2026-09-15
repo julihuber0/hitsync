@@ -10,9 +10,10 @@ import (
 
 // Config holds every environment-configurable setting for the media service.
 type Config struct {
-	MediaDomain       string `env:"MEDIA_DOMAIN,required"`
-	AppDomain         string `env:"APP_DOMAIN,required"`
 	MediaSharedSecret string `env:"MEDIA_SHARED_SECRET,required" secret:"true"`
+	LiveKitURL        string `env:"LIVEKIT_INTERNAL_URL" envDefault:"ws://livekit:7880"`
+	LiveKitAPIKey     string `env:"LIVEKIT_API_KEY,required" secret:"true"`
+	LiveKitAPISecret  string `env:"LIVEKIT_API_SECRET,required" secret:"true"`
 
 	NavidromeURL        string `env:"NAVIDROME_URL,required"`
 	NavidromeUsername   string `env:"NAVIDROME_USERNAME,required"`
@@ -25,9 +26,7 @@ type Config struct {
 	MediaCacheDir      string `env:"MEDIA_CACHE_DIR" envDefault:"/cache"`
 	MediaCacheMaxBytes int64  `env:"MEDIA_CACHE_MAX_BYTES" envDefault:"2147483648"`
 
-	MediaDirectPort string `env:"MEDIA_DIRECT_PORT" envDefault:""`
-	MediaTLSCert    string `env:"MEDIA_TLS_CERT_FILE" envDefault:""`
-	MediaTLSKey     string `env:"MEDIA_TLS_KEY_FILE" envDefault:""`
+	FFmpegPath string `env:"FFMPEG_PATH" envDefault:"ffmpeg"`
 
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
 
@@ -53,14 +52,11 @@ func Load() (*Config, error) {
 // Validate fails fast with a clear message when a required setting is missing or invalid.
 func (c *Config) Validate() error {
 	var errs []string
-	if c.MediaDomain == "" {
-		errs = append(errs, "MEDIA_DOMAIN is required")
-	}
-	if c.AppDomain == "" {
-		errs = append(errs, "APP_DOMAIN is required")
-	}
 	if len(c.MediaSharedSecret) < 32 {
 		errs = append(errs, "MEDIA_SHARED_SECRET must be at least 32 characters")
+	}
+	if c.LiveKitURL == "" || c.LiveKitAPIKey == "" || c.LiveKitAPISecret == "" {
+		errs = append(errs, "LIVEKIT_INTERNAL_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET are required")
 	}
 	if c.NavidromeURL == "" {
 		errs = append(errs, "NAVIDROME_URL is required")
@@ -71,32 +67,8 @@ func (c *Config) Validate() error {
 	if c.NavidromePassword == "" {
 		errs = append(errs, "NAVIDROME_PASSWORD is required")
 	}
-	if (c.MediaTLSCert == "") != (c.MediaTLSKey == "") {
-		errs = append(errs, "MEDIA_TLS_CERT_FILE and MEDIA_TLS_KEY_FILE must both be set or both be empty")
-	}
 	if len(errs) > 0 {
 		return fmt.Errorf("invalid configuration:\n  - %s", strings.Join(errs, "\n  - "))
 	}
 	return nil
-}
-
-// isLocalDomain reports whether domain (host, optionally with :port) refers
-// to the local machine, so local dev can run over plain HTTP without a
-// certificate.
-func isLocalDomain(domain string) bool {
-	host := domain
-	if i := strings.IndexByte(host, ':'); i >= 0 {
-		host = host[:i]
-	}
-	return host == "localhost" || host == "127.0.0.1" || strings.HasSuffix(host, ".localhost")
-}
-
-// AppOrigin returns the app's own origin, e.g. "https://hitsync.example.com"
-// in production or "http://localhost:5173" in local dev, for the media
-// service's CORS header.
-func (c *Config) AppOrigin() string {
-	if isLocalDomain(c.AppDomain) {
-		return "http://" + c.AppDomain
-	}
-	return "https://" + c.AppDomain
 }

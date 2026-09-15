@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// Payload is the signed payload embedded in a media stream token.
+// Payload is the signed payload embedded in a private broadcast-control token.
 type Payload struct {
 	TrackID string `json:"t"`
 	GameID  string `json:"g"`

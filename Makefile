@@ -35,7 +35,7 @@ logs:
 # --- Local development (see docs/local-development.md) ---
 
 dev-up:
-	docker compose -f docker-compose.dev.yml up -d postgres
+	docker compose -f docker-compose.dev.yml up -d postgres livekit
 
 dev-down:
 	docker compose -f docker-compose.dev.yml down

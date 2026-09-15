@@ -10,8 +10,54 @@ networks:
 volumes:
   pgdata:
   mediacache:
+  livekitconfig:
 
 services:
+  livekit-config:
+    image: busybox:1.37
+    restart: "no"
+    env_file: [.env]
+    command: ["sh", "-ec", "printf '%s: %s\\n' \"$$LIVEKIT_API_KEY\" \"$$LIVEKIT_API_SECRET\" > /config/keys.txt"]
+    volumes: [livekitconfig:/config]
+    networks: [internal]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 128M }
+
+  livekit:
+    image: livekit/livekit:v1.8.3
+    restart: unless-stopped
+    command: --config /etc/livekit/livekit.yaml
+    env_file: [.env]
+    depends_on:
+      redis: { condition: service_healthy }
+      livekit-config: { condition: service_completed_successfully }
+    volumes:
+      - ./livekit.yaml:/etc/livekit/livekit.yaml:ro
+      - livekitconfig:/run/hitsync-livekit
+    ports:
+      # WebRTC media must reach the SFU directly; Traefik only proxies 7880.
+      - "7881:7881/tcp"
+      - "50000-50100:50000-50100/udp"
+    networks: [internal, proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-proxy}
+      - traefik.http.routers.hitsync-livekit.rule=Host(`${LIVEKIT_DOMAIN}`)
+      - traefik.http.routers.hitsync-livekit.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.hitsync-livekit.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      - traefik.http.services.hitsync-livekit.loadbalancer.server.port=7880
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -36,6 +82,7 @@ services:
     env_file: [.env]
     depends_on:
       postgres: { condition: service_healthy }
+      livekit: { condition: service_started }
     networks: [internal, proxy]
     healthcheck:
       test: ["CMD", "/app/server", "-healthcheck"]
@@ -58,34 +105,20 @@ services:
     build: ./media
     restart: unless-stopped
     env_file: [.env]
-    # Escape hatch (§3.2, off by default): to publish the media service
-    # directly on a host port, uncomment the next two lines (and set
-    # MEDIA_DIRECT_PORT, MEDIA_TLS_CERT_FILE, MEDIA_TLS_KEY_FILE in .env) —
-    # see the README's "Direct port" section for the mixed-content caveat.
-    # ports:
-    #   - "${MEDIA_DIRECT_PORT}:8090"
+    depends_on:
+      livekit: { condition: service_started }
     volumes: [mediacache:/cache]
-    networks: [internal, proxy]
+    networks: [internal]
     deploy:
       resources:
         limits: { memory: 256M, cpus: "1" }
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=${TRAEFIK_NETWORK:-proxy}
-      - traefik.http.routers.hitsync-media.rule=Host(`${MEDIA_DOMAIN}`)
-      - traefik.http.routers.hitsync-media.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
-      - traefik.http.routers.hitsync-media.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
-      - traefik.http.services.hitsync-media.loadbalancer.server.port=8090
-      # stream bytes through instead of buffering them
-      - traefik.http.middlewares.hitsync-nobuffer.buffering.maxResponseBodyBytes=0
-      - traefik.http.routers.hitsync-media.middlewares=hitsync-nobuffer
 
   frontend:
     build: ./frontend
     restart: unless-stopped
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
-      MEDIA_DOMAIN: ${MEDIA_DOMAIN}
+      LIVEKIT_DOMAIN: ${LIVEKIT_DOMAIN}
     networks: [proxy]
     deploy:
       resources:

@@ -13,7 +13,8 @@ import (
 type Config struct {
 	// General
 	AppDomain           string `env:"APP_DOMAIN,required"`
-	MediaDomain         string `env:"MEDIA_DOMAIN,required"`
+	LiveKitURL          string `env:"LIVEKIT_URL,required"`
+	MediaInternalURL    string `env:"MEDIA_INTERNAL_URL" envDefault:"http://media:8090"`
 	TraefikNetwork      string `env:"TRAEFIK_NETWORK" envDefault:"proxy"`
 	TraefikEntrypoint   string `env:"TRAEFIK_ENTRYPOINT" envDefault:"websecure"`
 	TraefikCertResolver string `env:"TRAEFIK_CERTRESOLVER" envDefault:"letsencrypt"`
@@ -30,6 +31,8 @@ type Config struct {
 	AdminPassword     string `env:"ADMIN_PASSWORD,required" secret:"true"`
 	JWTSecret         string `env:"JWT_SECRET,required" secret:"true"`
 	MediaSharedSecret string `env:"MEDIA_SHARED_SECRET,required" secret:"true"`
+	LiveKitAPIKey     string `env:"LIVEKIT_API_KEY,required" secret:"true"`
+	LiveKitAPISecret  string `env:"LIVEKIT_API_SECRET,required" secret:"true"`
 
 	// Navidrome
 	NavidromeURL        string        `env:"NAVIDROME_URL,required"`
@@ -38,7 +41,7 @@ type Config struct {
 	NavidromeClientName string        `env:"NAVIDROME_CLIENT_NAME" envDefault:"hitsync"`
 	NavidromeTimeout    time.Duration `env:"NAVIDROME_TIMEOUT" envDefault:"30s"`
 
-	// Audio
+	// Server-side audio ingest/cache
 	AudioFormat        string `env:"AUDIO_FORMAT" envDefault:"mp3"`
 	AudioBitrate       int    `env:"AUDIO_BITRATE" envDefault:"192"`
 	MediaCacheDir      string `env:"MEDIA_CACHE_DIR" envDefault:"/cache"`
@@ -111,13 +114,19 @@ func (c *Config) Validate() error {
 	if c.AppDomain == "" {
 		errs = append(errs, "APP_DOMAIN is required")
 	}
-	if c.MediaDomain == "" {
-		errs = append(errs, "MEDIA_DOMAIN is required")
+	if c.LiveKitURL == "" {
+		errs = append(errs, "LIVEKIT_URL is required")
 	}
 	requireLen("APP_ACCESS_CODE", c.AppAccessCode, 4)
 	requireLen("ADMIN_PASSWORD", c.AdminPassword, 8)
 	requireLen("JWT_SECRET", c.JWTSecret, 32)
 	requireLen("MEDIA_SHARED_SECRET", c.MediaSharedSecret, 32)
+	if c.LiveKitAPIKey == "" {
+		errs = append(errs, "LIVEKIT_API_KEY is required")
+	}
+	if c.LiveKitAPISecret == "" {
+		errs = append(errs, "LIVEKIT_API_SECRET is required")
+	}
 	requireLen("POSTGRES_PASSWORD", c.PostgresPassword, 8)
 
 	if c.NavidromeURL == "" {
@@ -174,12 +183,6 @@ func (c *Config) AppOrigin() string {
 	return httpSchemeFor(c.AppDomain) + "://" + c.AppDomain
 }
 
-// MediaOrigin returns the media service's origin, following the same
-// local-domain-implies-plain-HTTP rule as AppOrigin.
-func (c *Config) MediaOrigin() string {
-	return httpSchemeFor(c.MediaDomain) + "://" + c.MediaDomain
-}
-
 // Redacted returns a copy suitable for logging, with secret fields masked.
 func (c *Config) Redacted() map[string]any {
 	mask := func(s string) string {
@@ -190,7 +193,8 @@ func (c *Config) Redacted() map[string]any {
 	}
 	return map[string]any{
 		"APP_DOMAIN":           c.AppDomain,
-		"MEDIA_DOMAIN":         c.MediaDomain,
+		"LIVEKIT_URL":          c.LiveKitURL,
+		"MEDIA_INTERNAL_URL":   c.MediaInternalURL,
 		"TRAEFIK_NETWORK":      c.TraefikNetwork,
 		"LOG_LEVEL":            c.LogLevel,
 		"TZ":                   c.TZ,
@@ -198,6 +202,8 @@ func (c *Config) Redacted() map[string]any {
 		"ADMIN_PASSWORD":       mask(c.AdminPassword),
 		"JWT_SECRET":           mask(c.JWTSecret),
 		"MEDIA_SHARED_SECRET":  mask(c.MediaSharedSecret),
+		"LIVEKIT_API_KEY":      mask(c.LiveKitAPIKey),
+		"LIVEKIT_API_SECRET":   mask(c.LiveKitAPISecret),
 		"NAVIDROME_URL":        c.NavidromeURL,
 		"NAVIDROME_USERNAME":   c.NavidromeUsername,
 		"NAVIDROME_PASSWORD":   mask(c.NavidromePassword),

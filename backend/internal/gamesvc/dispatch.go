@@ -70,10 +70,12 @@ func dispatchMessage(mg *ManagedGame, c *ws.Conn, env ws.Envelope) {
 		switch {
 		case ended:
 			mg.clearPhaseTimeout()
+			mg.stopBroadcast()
 			mg.persistOnGameOver()
 			mg.broadcastState()
 		case wasActive:
 			mg.clearPhaseTimeout()
+			mg.stopBroadcast()
 			mg.g.Turn = nil
 			mg.beginNextTurn(true)
 		default:

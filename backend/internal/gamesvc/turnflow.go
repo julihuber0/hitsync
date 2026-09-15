@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/julianhuber/hitsync/backend/internal/game"
+	"github.com/julianhuber/hitsync/backend/internal/livekit"
 	"github.com/julianhuber/hitsync/backend/internal/ws"
 )
 
@@ -64,8 +65,19 @@ func (mg *ManagedGame) beginNextTurn(advance bool) {
 
 	prepareID := newID()
 	durationMs := int64(cand.DurationSec) * 1000
-	streamURL := mg.buildStreamURL(card.TrackID)
-	mg.lastPrep = &lastPrepare{prepareID: prepareID, trackID: card.TrackID, streamURL: streamURL, durationMs: durationMs}
+	mediaToken, err := mg.mediaSigner.Issue(mg.id, card.TrackID, mg.cfg.MediaTTL)
+	if err != nil {
+		mg.endForBroadcastFailure("could not authorise audio broadcast", err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	err = mg.broadcaster.Prepare(ctx, mg.id, card.TrackID, mediaToken)
+	cancel()
+	if err != nil {
+		mg.endForBroadcastFailure("could not prepare audio broadcast", err)
+		return
+	}
+	mg.lastPrep = &lastPrepare{prepareID: prepareID, trackID: card.TrackID, durationMs: durationMs}
 
 	var guessOpts *ws.GuessOptions
 	if mg.g.Settings.EnableSongGuess {
@@ -80,7 +92,12 @@ func (mg *ManagedGame) beginNextTurn(advance bool) {
 		if c == nil {
 			continue
 		}
-		payload := ws.TrackPreparePayload{PrepareID: prepareID, TrackID: card.TrackID, StreamURL: streamURL, DurationMs: durationMs}
+		livekitToken, err := mg.livekitTokens.Issue(livekit.RoomName(mg.id), playerID)
+		if err != nil {
+			mg.log.Error("failed to issue LiveKit token", "game_id", mg.id, "player_id", playerID, "error", err)
+			continue
+		}
+		payload := ws.TrackPreparePayload{PrepareID: prepareID, TrackID: card.TrackID, LiveKitURL: mg.cfg.LiveKitURL, LiveKitToken: livekitToken, RoomName: livekit.RoomName(mg.id), DurationMs: durationMs}
 		if playerID == activeID {
 			payload.GuessOptions = guessOpts
 		}
@@ -89,14 +106,6 @@ func (mg *ManagedGame) beginNextTurn(advance bool) {
 
 	mg.schedulePhaseTimeout(mg.cfg.PreparingCap, mg.onPrepareTimeout)
 	mg.broadcastState()
-}
-
-func (mg *ManagedGame) buildStreamURL(trackID string) string {
-	token, err := mg.mediaSigner.Issue(mg.id, trackID, mg.cfg.MediaTTL)
-	if err != nil {
-		return ""
-	}
-	return mg.cfg.MediaBaseURL + "/stream/" + trackID + "?token=" + token
 }
 
 func (mg *ManagedGame) handleReady(playerID, prepareID string) {
@@ -125,24 +134,30 @@ func (mg *ManagedGame) onPrepareTimeout() {
 	mg.beginPlacing()
 }
 
-// beginPlacing transitions PREPARING -> PLACING and broadcasts track_start
-// (§8.5, §10.4).
+// beginPlacing transitions PREPARING -> PLACING and starts the server-side
+// LiveKit audio publication. No browser chooses or corrects a playback clock.
 func (mg *ManagedGame) beginPlacing() {
 	if err := mg.g.BeginPlacing(); err != nil {
 		return
 	}
-	startAt := time.Now().Add(time.Duration(mg.cfg.StartAtLeadMs) * time.Millisecond)
-	mg.lastPrep.startAtServerMs = startAt.UnixMilli()
+	mediaToken, err := mg.mediaSigner.Issue(mg.id, mg.lastPrep.trackID, mg.cfg.MediaTTL)
+	if err != nil {
+		mg.endForBroadcastFailure("could not authorise audio broadcast", err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	err = mg.broadcaster.Start(ctx, mg.id, mg.lastPrep.trackID, mediaToken)
+	cancel()
+	if err != nil {
+		mg.endForBroadcastFailure("could not start audio broadcast", err)
+		return
+	}
 
 	for _, c := range mg.conns {
 		if c == nil {
 			continue
 		}
-		c.Send(ws.TypeTrackStart, ws.TrackStartPayload{
-			PrepareID:       mg.lastPrep.prepareID,
-			StartAtServerMs: mg.lastPrep.startAtServerMs,
-			DurationMs:      mg.lastPrep.durationMs,
-		})
+		c.Send(ws.TypeTrackStart, ws.TrackStartPayload{PrepareID: mg.lastPrep.prepareID})
 	}
 
 	timeout := mg.cfg.TurnPlacementTimeout
@@ -232,6 +247,7 @@ func (mg *ManagedGame) beginRevealing() {
 		}
 		c.Send(ws.TypeTrackStop, ws.TrackStopPayload{FadeMs: 400})
 	}
+	mg.stopBroadcast()
 
 	reveal, err := mg.g.Resolve()
 	if err != nil {
@@ -302,6 +318,7 @@ func (mg *ManagedGame) handleSkipTrack(playerID string) {
 	}
 	mg.lastSkipAt = time.Now()
 	mg.clearPhaseTimeout()
+	mg.stopBroadcast()
 	mg.beginNextTurn(false)
 }
 
@@ -317,6 +334,7 @@ func (mg *ManagedGame) handleKickPlayer(hostID, targetID string) {
 	mg.dropConn(targetID, "kicked")
 	if ended {
 		mg.clearPhaseTimeout()
+		mg.stopBroadcast()
 		mg.broadcastState()
 		mg.persistOnGameOver()
 		return
@@ -334,6 +352,30 @@ func (mg *ManagedGame) handleEndGame(hostID string) {
 	if err := mg.g.EndGame(hostID); err != nil {
 		return
 	}
+	mg.clearPhaseTimeout()
+	mg.stopBroadcast()
+	mg.broadcastState()
+	mg.persistOnGameOver()
+}
+
+func (mg *ManagedGame) stopBroadcast() {
+	if mg.lastPrep == nil {
+		return
+	}
+	token, err := mg.mediaSigner.Issue(mg.id, mg.lastPrep.trackID, mg.cfg.MediaTTL)
+	if err != nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := mg.broadcaster.Stop(ctx, mg.id, mg.lastPrep.trackID, token); err != nil {
+		mg.log.Warn("failed to stop audio broadcast", "game_id", mg.id, "track_id", mg.lastPrep.trackID, "error", err)
+	}
+}
+
+func (mg *ManagedGame) endForBroadcastFailure(message string, err error) {
+	mg.log.Error(message, "game_id", mg.id, "error", err)
+	_ = mg.g.EndGame(mg.g.HostID)
 	mg.clearPhaseTimeout()
 	mg.broadcastState()
 	mg.persistOnGameOver()
