@@ -1,7 +1,6 @@
 package gamesvc
 
 import (
-	"context"
 	"time"
 
 	"github.com/julianhuber/hitsync/backend/internal/game"
@@ -14,13 +13,17 @@ func (mg *ManagedGame) startGameFlow(hostID string) error {
 	if hostID != mg.g.HostID {
 		return game.ErrNotHost
 	}
+	// One starting card per player plus at least one turn.
+	if mg.trackSource.PlayableCount() <= len(mg.g.Players) {
+		return ErrNoCards
+	}
 	if err := mg.g.StartGame(mg.cfg.MinPlayers); err != nil {
 		return err
 	}
 	mg.startedAt = time.Now()
 
 	for _, p := range mg.g.Players {
-		cand, err := mg.trackSource.DrawAndResolve(context.Background(), context.Background(), mg.usedAndPendingIDs())
+		cand, err := mg.trackSource.Draw(mg.excludedTrackIDs())
 		if err != nil {
 			mg.log.Error("failed to deal starting card", "game_id", mg.id, "player_id", p.ID, "error", err)
 			continue
@@ -28,7 +31,6 @@ func (mg *ManagedGame) startGameFlow(hostID string) error {
 		_ = mg.g.DealStartingCard(p.ID, cand.Card)
 	}
 
-	mg.ensureLookahead()
 	mg.beginNextTurn(true)
 	mg.broadcastState()
 	return nil
@@ -45,8 +47,8 @@ func (mg *ManagedGame) beginNextTurn(advance bool) {
 	}
 	mg.turnCount++
 
-	cand, err := mg.nextCandidate()
-	if err != nil || cand == nil {
+	cand, err := mg.takeCandidate()
+	if err != nil {
 		mg.log.Error("track pool exhausted", "game_id", mg.id, "error", err)
 		_ = mg.g.EndGame(mg.g.HostID)
 		mg.clearPhaseTimeout()
@@ -65,10 +67,8 @@ func (mg *ManagedGame) beginNextTurn(advance bool) {
 
 	mg.track = &activeTrack{prepareID: newID(), trackID: card.TrackID, durationMs: int64(cand.DurationSec) * 1000}
 	if mg.g.Settings.EnableSongGuess {
-		titles, artists, err := mg.trackSource.SongGuessOptions(context.Background(), &card)
-		if err == nil {
-			mg.track.guessOptions = &ws.GuessOptions{Titles: titles, Artists: artists}
-		}
+		titles, artists := mg.trackSource.SongGuessOptions(&card)
+		mg.track.guessOptions = &ws.GuessOptions{Titles: titles, Artists: artists}
 	}
 
 	if url, ok := mg.mediaURL(card.TrackID); ok {
@@ -79,7 +79,7 @@ func (mg *ManagedGame) beginNextTurn(advance bool) {
 			mg.sendTrackPrepare(c, url)
 		}
 	}
-	mg.announceNextTrack()
+	mg.drawUpcoming()
 
 	mg.schedulePhaseTimeout(mg.cfg.PreparingCap, mg.onPrepareTimeout)
 	mg.broadcastState()
@@ -376,8 +376,7 @@ func (mg *ManagedGame) handlePlayAgain(hostID string) {
 	if err := mg.g.PlayAgain(hostID); err != nil {
 		return
 	}
-	mg.candidates = nil
-	mg.announcedTrackID = ""
+	mg.upcoming = nil
 	mg.turnCount = 0
 	mg.broadcastState()
 }

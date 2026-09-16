@@ -34,10 +34,8 @@ type ManagedGame struct {
 
 	lastSkipAt time.Time
 
-	candidates []*Candidate
-	resolving  int
-	// announcedTrackID is the candidate most recently sent as track_preload.
-	announcedTrackID string
+	// upcoming is the next turn's card, already announced for preloading.
+	upcoming *Candidate
 
 	pendingReady      map[string]bool
 	pendingSongGuess  *pendingSongGuess

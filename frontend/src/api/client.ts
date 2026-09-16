@@ -74,27 +74,8 @@ export const api = {
   adminLogin: (password: string) => request<{ ok: boolean }>("/api/admin/login", { method: "POST", body: JSON.stringify({ password }) }),
   adminLogout: () => request<{ ok: boolean }>("/api/admin/logout", { method: "POST" }),
   adminStats: () => request<Record<string, unknown>>("/api/admin/stats"),
-  adminTracks: (params: { q?: string; excluded?: string; page?: number; pageSize?: number }) => {
-    const qs = new URLSearchParams();
-    if (params.q) qs.set("q", params.q);
-    if (params.excluded) qs.set("excluded", params.excluded);
-    if (params.page !== undefined) qs.set("page", String(params.page));
-    if (params.pageSize !== undefined) qs.set("pageSize", String(params.pageSize));
-    return request<Record<string, unknown>>(`/api/admin/tracks?${qs.toString()}`);
-  },
-  adminArtists: (q: string) => request<Record<string, unknown>>(`/api/admin/artists?q=${encodeURIComponent(q)}`),
-  adminAlbums: (q: string) => request<Record<string, unknown>>(`/api/admin/albums?q=${encodeURIComponent(q)}`),
-  adminCreateExclusion: (kind: string, refId: string, label: string, reason?: string) =>
-    request<{ ok: boolean }>("/api/admin/exclusions", { method: "POST", body: JSON.stringify({ kind, refId, label, reason }) }),
-  adminDeleteExclusion: (kind: string, refId: string) =>
-    request<{ ok: boolean }>(`/api/admin/exclusions/${kind}/${encodeURIComponent(refId)}`, { method: "DELETE" }),
-  adminListExclusions: (kind?: string) => request<Record<string, unknown>>(`/api/admin/exclusions${kind ? `?kind=${kind}` : ""}`),
-  adminSetYearOverride: (trackId: string, year: number, note?: string) =>
-    request<{ ok: boolean }>(`/api/admin/year-overrides/${encodeURIComponent(trackId)}`, { method: "PUT", body: JSON.stringify({ year, note }) }),
-  adminDeleteYearOverride: (trackId: string) =>
-    request<{ ok: boolean }>(`/api/admin/year-overrides/${encodeURIComponent(trackId)}`, { method: "DELETE" }),
-  adminResyncLibrary: () => request<{ ok: boolean }>("/api/admin/resync-library", { method: "POST" }),
-  adminResolveYear: (trackId: string) => request<Record<string, unknown>>(`/api/admin/resolve-year/${encodeURIComponent(trackId)}`, { method: "POST" }),
+  adminScanCards: () =>
+    request<{ added: number; updated: number; removed: number; total: number }>("/api/admin/cards/scan", { method: "POST" }),
   adminGames: () => request<Record<string, unknown>>("/api/admin/games"),
   adminForceEndGame: (gameId: string) => request<{ ok: boolean }>(`/api/admin/games/${encodeURIComponent(gameId)}`, { method: "DELETE" }),
 };

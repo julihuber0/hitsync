@@ -24,9 +24,11 @@ cd hitsync
 cp .env.example .env
 ```
 
-Set a unique `JWT_SECRET` and the other required values.
+Set a unique `JWT_SECRET` and the other required values. Set `PUID`/`PGID`
+to the ids of the user who will edit `config/cards.json` (`id -u`, `id -g`).
 
 ```sh
+mkdir -p config
 docker network create proxy  # only if absent
 docker compose build
 docker compose up -d
@@ -40,7 +42,8 @@ curl -fsS https://YOUR_APP_DOMAIN/healthz
 docker compose logs --tail=100 backend
 ```
 
-Start a two-player game after the Navidrome sync completes. In browser DevTools
+Wait for `card scan complete` in the backend log; `config/cards.json` now
+exists. Then start a two-player game. In browser DevTools
 each player should download one `/api/media/...` file (`audio/mpeg`) per turn,
 plus the next turn's file while a turn is playing.
 
@@ -52,7 +55,9 @@ docker compose build
 docker compose up -d
 ```
 
-Back up Postgres (`pgdata`) regularly. The `mediacache` volume is disposable:
+Back up `config/cards.json`: it holds your `hitsyncyear` and `excluded`
+edits. Postgres (`pgdata`) holds only game snapshots and results. The
+`mediacache` volume is disposable:
 transcoded tracks are recreated from Navidrome on demand. Keep `.env` in secure
 secret storage.
 
@@ -82,7 +87,23 @@ docker compose up -d
 LiveKit's TCP 7883 and UDP 51000-51100 firewall rules and the LiveKit DNS
 record can be removed.
 
+### Upgrading to the cards file
+
+MusicBrainz lookups, the `HITSYNCYEAR`/`HITSYNCEXCLUDE` file tags, and the
+admin console's exclusions and year overrides were replaced by
+`config/cards.json`. A database migration drops their tables, so write down
+any exclusions or overrides you want to keep before upgrading, and re-apply
+them in the file after the first scan. Remove `LIBRARY_SYNC_INTERVAL`,
+`MUSICBRAINZ_*`, and `YEAR_*` from `.env`.
+
 ## Troubleshooting
+
+- **No cards / scan failed:** the admin page and the backend log
+  (`card scan failed`) show the reason. A scan fails without touching the file
+  when Navidrome is unreachable or returns no songs, or when `cards.json` has
+  a syntax error, an unknown field, or a duplicate `navidromeId`.
+- **`permission denied` writing `/config/cards.json`:** set `PUID`/`PGID` to
+  the owner of the `config` directory.
 
 - **A song never finishes loading:** look for `failed to prepare media` in the
   backend log. FFmpeg errors there usually mean Navidrome could not deliver the

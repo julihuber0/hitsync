@@ -109,11 +109,8 @@
     "wrong": "Wrong",
     "stolen": "{{name}} stole the card!",
     "discarded": "Nobody got it — card discarded",
-    "sourceLibrary": "Library",
-    "sourceMusicBrainz": "MusicBrainz",
-    "sourceBoth": "Both",
-    "sourceManual": "Manual",
-    "sourceTag": "File Tag",
+    "sourceNavidrome": "Navidrome",
+    "sourceHitsyncYear": "Corrected year",
     "songGuessCorrect": "Bonus token earned!",
     "continuing": "Next turn starting…"
   },
@@ -144,42 +141,21 @@
     },
     "nav": {
       "overview": "Overview",
-      "library": "Library",
-      "exclusions": "Exclusions",
       "games": "Games"
     },
     "overview": {
-      "libraryTracks": "Library tracks",
-      "eligibleTracks": "Eligible tracks",
+      "cardsFile": "Cards file",
+      "cards": "Cards",
+      "playableCards": "Playable cards",
+      "excludedCards": "Excluded cards",
+      "cardsMissingYear": "Cards without a year",
+      "lastScan": "Last library scan",
       "activeGames": "Active games",
-      "lastSync": "Last library sync",
-      "cacheSize": "MusicBrainz cache size",
-      "resync": "Resync library now"
-    },
-    "library": {
-      "search": "Search title, artist, album…",
-      "filterAll": "All",
-      "filterExcluded": "Excluded",
-      "filterIncluded": "Included",
-      "columnTitle": "Title",
-      "columnArtist": "Artist",
-      "columnAlbum": "Album",
-      "columnYear": "Navidrome year",
-      "columnTagYear": "Tag year",
-      "columnOverride": "Override",
-      "columnExcluded": "Excluded",
-      "exclude": "Exclude",
-      "include": "Include",
-      "lookupYear": "Look up year",
-      "setOverride": "Set override",
-      "overrideYearPlaceholder": "Year",
-      "overrideNotePlaceholder": "Note (optional)"
-    },
-    "exclusions": {
-      "empty": "No exclusions yet.",
-      "kindTrack": "Track",
-      "kindAlbum": "Album",
-      "kindArtist": "Artist"
+      "lastScanFailed": "The last scan failed: {{error}}",
+      "scanHint": "A scan adds new songs from Navidrome to the cards file, removes songs that are gone, and applies your edits to hitsyncyear and excluded.",
+      "scan": "Scan library now",
+      "scanning": "Scanning…",
+      "scanResult": "Scan complete: {{added}} added, {{updated}} updated, {{removed}} removed, {{total}} cards in total."
     },
     "games": {
       "inviteCode": "Invite code",

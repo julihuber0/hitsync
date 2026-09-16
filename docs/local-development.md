@@ -15,6 +15,11 @@ make dev-backend
 make dev-frontend
 ```
 
+On startup the backend scans your Navidrome library into
+`config/cards.json` at the repository root (`CARDS_FILE=../config/cards.json`),
+the same file Docker Compose uses. Edit `hitsyncyear`/`excluded` there, then
+use **Scan library now** on `/admin` to apply the edits.
+
 Open `http://localhost:5173`. Vite proxies `/api` and `/ws` to the backend,
 which transcodes each track with your local FFmpeg and serves it to the
 browser as `/api/media/...`.

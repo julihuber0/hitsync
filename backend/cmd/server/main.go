@@ -14,25 +14,19 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/julianhuber/hitsync/backend/internal/cards"
 	"github.com/julianhuber/hitsync/backend/internal/config"
 	"github.com/julianhuber/hitsync/backend/internal/gamesvc"
 	"github.com/julianhuber/hitsync/backend/internal/httpapi"
-	"github.com/julianhuber/hitsync/backend/internal/library"
 	"github.com/julianhuber/hitsync/backend/internal/media"
-	"github.com/julianhuber/hitsync/backend/internal/musicbrainz"
 	"github.com/julianhuber/hitsync/backend/internal/navidrome"
 	"github.com/julianhuber/hitsync/backend/internal/store"
 	"github.com/julianhuber/hitsync/backend/internal/tokens"
-	"github.com/julianhuber/hitsync/backend/internal/years"
 )
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "-healthcheck" {
 		runHealthcheckProbe()
-		return
-	}
-	if len(os.Args) > 2 && os.Args[1] == "resolve-year" {
-		runResolveYearCLI(os.Args[2], os.Args[3])
 		return
 	}
 
@@ -57,17 +51,12 @@ func main() {
 	defer st.Close()
 
 	nav := navidrome.New(cfg.NavidromeURL, cfg.NavidromeUsername, cfg.NavidromePassword, cfg.NavidromeClientName, cfg.NavidromeTimeout)
-	syncer := library.New(nav, st, log)
-	go syncer.RunPeriodic(ctx, cfg.LibrarySyncInterval)
-
-	mbClient := musicbrainz.New(musicbrainz.Config{
-		BaseURL:    cfg.MusicBrainzBaseURL,
-		Contact:    cfg.MusicBrainzContact,
-		RatePerSec: cfg.MusicBrainzRatePerSec,
-	})
-	resolver := years.NewResolver(musicbrainz.YearsAdapter{Client: mbClient}, cfg.MusicBrainzEnabled, cfg.MusicBrainzCacheEntries, cfg.MusicBrainzCacheTTL)
-
-	trackSource := gamesvc.NewTrackSource(st, resolver, syncer, cfg.TrackMinDuration, cfg.TrackMaxDuration, cfg.YearMaxBackdate)
+	// Games draw from the card collection once the startup scan has merged
+	// the Navidrome library into the cards file (or, if Navidrome is
+	// unreachable, from the existing file as it is).
+	collection := cards.NewCollection(cfg.CardsFile, nav, cfg.TrackMinDuration, cfg.TrackMaxDuration, log)
+	go func() { _, _ = collection.Scan(ctx) }()
+	trackSource := gamesvc.NewTrackSource(collection)
 
 	// Files are keyed by output format so a changed AUDIO_BITRATE (or files
 	// left by an older deployment) are never served in place of fresh ones.
@@ -97,15 +86,14 @@ func main() {
 		TurnChallengeWindow: cfg.TurnChallengeWindow, RevealDuration: cfg.RevealDuration,
 		PreparingCap: 8 * time.Second, StartAtLeadMs: 400,
 		PlayerReconnectGrace: cfg.PlayerReconnectGrace, LobbyIdleTimeout: cfg.LobbyIdleTimeout,
-		SkipRateLimit:      10 * time.Second,
-		YearLookaheadDepth: cfg.YearLookaheadDepth, YearLookupTimeout: cfg.YearLookupTimeout,
-		AppDomain: cfg.AppDomain, MediaTTL: 30 * time.Minute,
+		SkipRateLimit: 10 * time.Second,
+		AppDomain:     cfg.AppDomain, MediaTTL: 30 * time.Minute,
 	}
 	manager := gamesvc.NewManager(gsCfg, st, trackSource, mediaSigner, transcoder, issuer, log)
 	manager.RehydrateFromSnapshots(ctx)
 	go manager.RunJanitor(ctx)
 
-	api := httpapi.New(cfg, issuer, mediaSigner, transcoder, st, manager, syncer, resolver, mbClient, nav, log)
+	api := httpapi.New(cfg, issuer, mediaSigner, transcoder, st, manager, collection, nav, log)
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
@@ -164,28 +152,4 @@ func runHealthcheckProbe() {
 	if resp.StatusCode != http.StatusOK {
 		os.Exit(1)
 	}
-}
-
-// runResolveYearCLI is the §19 build-order CLI subcommand for manually
-// resolving a title/artist pair and printing both year sources.
-func runResolveYearCLI(title, artist string) {
-	cfg, err := config.Load()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "config error:", err)
-		os.Exit(1)
-	}
-	mbClient := musicbrainz.New(musicbrainz.Config{
-		BaseURL: cfg.MusicBrainzBaseURL, Contact: cfg.MusicBrainzContact,
-		RatePerSec: cfg.MusicBrainzRatePerSec,
-	})
-	res, err := mbClient.Resolve(context.Background(), title, artist)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "resolve error:", err)
-		os.Exit(1)
-	}
-	if res == nil {
-		fmt.Printf("No MusicBrainz match for %q by %q\n", title, artist)
-		return
-	}
-	fmt.Printf("Title: %s\nArtist: %s\nMusicBrainz year: %d\nSource: %s\n", title, artist, res.Year, res.Source)
 }

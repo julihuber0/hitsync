@@ -109,11 +109,8 @@
     "wrong": "Falsch",
     "stolen": "{{name}} hat die Karte gestohlen!",
     "discarded": "Niemand hat's geschafft — Karte verworfen",
-    "sourceLibrary": "Bibliothek",
-    "sourceMusicBrainz": "MusicBrainz",
-    "sourceBoth": "Beide",
-    "sourceManual": "Manuell",
-    "sourceTag": "Datei-Tag",
+    "sourceNavidrome": "Navidrome",
+    "sourceHitsyncYear": "Korrigiertes Jahr",
     "songGuessCorrect": "Bonus-Token verdient!",
     "continuing": "Nächste Runde startet…"
   },
@@ -144,42 +141,21 @@
     },
     "nav": {
       "overview": "Übersicht",
-      "library": "Bibliothek",
-      "exclusions": "Ausschlüsse",
       "games": "Spiele"
     },
     "overview": {
-      "libraryTracks": "Titel in der Bibliothek",
-      "eligibleTracks": "Spielbare Titel",
+      "cardsFile": "Kartendatei",
+      "cards": "Karten",
+      "playableCards": "Spielbare Karten",
+      "excludedCards": "Ausgeschlossene Karten",
+      "cardsMissingYear": "Karten ohne Jahr",
+      "lastScan": "Letzter Bibliotheks-Scan",
       "activeGames": "Aktive Spiele",
-      "lastSync": "Letzter Bibliotheks-Sync",
-      "cacheSize": "MusicBrainz-Cache-Größe",
-      "resync": "Bibliothek jetzt synchronisieren"
-    },
-    "library": {
-      "search": "Titel, Künstler, Album suchen…",
-      "filterAll": "Alle",
-      "filterExcluded": "Ausgeschlossen",
-      "filterIncluded": "Enthalten",
-      "columnTitle": "Titel",
-      "columnArtist": "Künstler",
-      "columnAlbum": "Album",
-      "columnYear": "Navidrome-Jahr",
-      "columnTagYear": "Tag-Jahr",
-      "columnOverride": "Override",
-      "columnExcluded": "Ausgeschlossen",
-      "exclude": "Ausschließen",
-      "include": "Einschließen",
-      "lookupYear": "Jahr nachschlagen",
-      "setOverride": "Override setzen",
-      "overrideYearPlaceholder": "Jahr",
-      "overrideNotePlaceholder": "Notiz (optional)"
-    },
-    "exclusions": {
-      "empty": "Noch keine Ausschlüsse.",
-      "kindTrack": "Titel",
-      "kindAlbum": "Album",
-      "kindArtist": "Künstler"
+      "lastScanFailed": "Der letzte Scan ist fehlgeschlagen: {{error}}",
+      "scanHint": "Ein Scan ergänzt neue Songs aus Navidrome in der Kartendatei, entfernt nicht mehr vorhandene und übernimmt deine Änderungen an hitsyncyear und excluded.",
+      "scan": "Bibliothek jetzt scannen",
+      "scanning": "Scan läuft…",
+      "scanResult": "Scan abgeschlossen: {{added}} hinzugefügt, {{updated}} aktualisiert, {{removed}} entfernt, insgesamt {{total}} Karten."
     },
     "games": {
       "inviteCode": "Einladungscode",

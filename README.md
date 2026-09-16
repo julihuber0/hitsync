@@ -29,6 +29,51 @@ Tracks are transcoded by FFmpeg inside the backend to MP3 at 128 kbit/s with
 all tags stripped, so a downloaded file cannot reveal title, artist, or year.
 Download URLs carry short-lived signed tokens that only the game hands out.
 
+## Song cards
+
+The game draws its cards from `./config/cards.json`, next to
+`docker-compose.yml` (mounted into the backend at `/config`). The backend
+writes this file itself, and you edit it by hand:
+
+```json
+[
+  {
+    "navidromeId": "4ccrvYWUdYra3PcIgm4cCH",
+    "title": "Take On Me",
+    "artist": "a-ha",
+    "album": "80s Hits",
+    "year": 2003,
+    "durationSec": 225,
+    "hitsyncyear": 1985,
+    "excluded": false
+  }
+]
+```
+
+- `navidromeId`, `title`, `artist`, `album`, `year`, and `durationSec` come
+  from Navidrome and are refreshed on every scan.
+- `hitsyncyear` (initially `null`) overrides `year`, e.g. for a song that
+  Navidrome dates by the compilation it appears on.
+- `excluded` (initially `false`) keeps a song out of games when set to `true`.
+
+**Scans.** On startup the backend reads the whole Navidrome library and
+merges it into the file: new songs are added, songs no longer in Navidrome are
+removed, and the Navidrome fields are updated. `hitsyncyear` and `excluded`
+are never changed. The file is created on the first scan. Games use the result
+once the scan finishes. If Navidrome can't be reached, the existing file is
+used as it is.
+
+**Editing.** Edits take effect on the next scan. After editing, trigger one
+from the admin page (**Scan library now**) or with
+`POST /api/admin/cards/scan` (admin session required). The file is read
+strictly: a JSON syntax error, an unknown field, or a duplicate `navidromeId`
+fails the scan and leaves the file untouched, and the admin page shows the
+error.
+
+A song is playable when it is not excluded, has a year (`hitsyncyear` or
+`year`), and its duration is between `TRACK_MIN_DURATION` and
+`TRACK_MAX_DURATION`. Other songs stay in the file.
+
 ## Prerequisites
 
 - Docker Engine and Docker Compose v2
@@ -44,9 +89,11 @@ cd hitsync
 cp .env.example .env
 ```
 
-Set the required values in `.env`, then:
+Set the required values in `.env` (including `PUID`/`PGID`, your user's
+`id -u`/`id -g`, so you own the generated `config/cards.json`), then:
 
 ```sh
+mkdir -p config
 docker network create proxy  # only when this Traefik network does not exist
 docker compose build
 docker compose up -d
@@ -62,11 +109,13 @@ everything else to the frontend.
 | `APP_DOMAIN` | yes | App, API, and game WebSocket hostname |
 | `JWT_SECRET` | yes | ≥32 chars; signs sessions, player tokens, and media download URLs |
 | `NAVIDROME_URL`, `NAVIDROME_USERNAME`, `NAVIDROME_PASSWORD` | yes | Private library source |
+| `PUID`, `PGID` | no | User/group the backend runs as, and owner of `config/cards.json`; default `1000` |
+| `CARDS_FILE` | no | Card collection path inside the container, default `/config/cards.json` |
 | `AUDIO_BITRATE` | no | MP3 bitrate players download, default `128` kbit/s |
 | `MEDIA_CACHE_DIR`, `MEDIA_CACHE_MAX_BYTES` | no | Server-side LRU cache of transcoded tracks, default `/cache` / 2 GiB |
 | `FFMPEG_PATH` | no | FFmpeg binary, default `ffmpeg` (bundled in the backend image) |
 
-All other game, database, and MusicBrainz settings remain documented in
+All other game and database settings remain documented in
 [`.env.example`](.env.example). Generate independent secrets with:
 
 ```sh

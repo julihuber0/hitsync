@@ -12,13 +12,8 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
-
-func isNoRows(err error) bool {
-	return errors.Is(err, pgx.ErrNoRows)
-}
 
 //go:embed migrations/*.sql
 var migrationsFS embed.FS

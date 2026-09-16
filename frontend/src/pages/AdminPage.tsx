@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../api/client";
 
-type Tab = "overview" | "library" | "exclusions" | "games";
+type Tab = "overview" | "games";
 
 export default function AdminPage() {
   const { t } = useTranslation();
@@ -59,7 +59,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen p-6 text-sm animate-fade-in">
       <nav className="flex gap-2 mb-6">
-        {(["overview", "library", "exclusions", "games"] as Tab[]).map((tabName) => (
+        {(["overview", "games"] as Tab[]).map((tabName) => (
           <button
             key={tabName}
             onClick={() => setTab(tabName)}
@@ -73,28 +73,64 @@ export default function AdminPage() {
       </nav>
 
       {tab === "overview" && <OverviewTab />}
-      {tab === "library" && <LibraryTab />}
-      {tab === "exclusions" && <ExclusionsTab />}
       {tab === "games" && <GamesTab />}
     </div>
   );
 }
 
+interface AdminStats {
+  cardsFile: string;
+  cards: number;
+  playableCards: number;
+  excludedCards: number;
+  cardsMissingYear: number;
+  lastScan: string | null;
+  lastScanError: string | null;
+  scanning: boolean;
+  activeGames: number;
+}
+
+interface ScanSummary {
+  added: number;
+  updated: number;
+  removed: number;
+  total: number;
+}
+
 function OverviewTab() {
   const { t } = useTranslation();
-  const [stats, setStats] = useState<Record<string, unknown> | null>(null);
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [result, setResult] = useState<ScanSummary | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
 
-  const load = () => void api.adminStats().then(setStats);
+  const load = () => void api.adminStats().then((s) => setStats(s as unknown as AdminStats));
   useEffect(load, []);
+
+  const scan = async () => {
+    setScanning(true);
+    setResult(null);
+    setScanError(null);
+    try {
+      setResult(await api.adminScanCards());
+    } catch (err) {
+      setScanError(err instanceof ApiError ? err.message : t("errors.generic"));
+    } finally {
+      setScanning(false);
+      load();
+    }
+  };
 
   if (!stats) return null;
 
   const rows: [string, unknown][] = [
-    [t("admin.overview.libraryTracks"), stats.libraryTracks],
-    [t("admin.overview.eligibleTracks"), stats.eligibleTracks],
+    [t("admin.overview.cardsFile"), stats.cardsFile],
+    [t("admin.overview.cards"), stats.cards],
+    [t("admin.overview.playableCards"), stats.playableCards],
+    [t("admin.overview.excludedCards"), stats.excludedCards],
+    [t("admin.overview.cardsMissingYear"), stats.cardsMissingYear],
+    [t("admin.overview.lastScan"), stats.lastScan ?? "—"],
     [t("admin.overview.activeGames"), stats.activeGames],
-    [t("admin.overview.lastSync"), stats.lastLibrarySync ?? "—"],
-    [t("admin.overview.cacheSize"), stats.musicBrainzCacheLen],
   ];
 
   return (
@@ -104,160 +140,25 @@ function OverviewTab() {
           {rows.map(([label, value]) => (
             <tr key={label} className="border-b border-border">
               <td className="py-2 text-neon/60">{label}</td>
-              <td className="py-2 text-right font-mono">{String(value)}</td>
+              <td className="py-2 text-right font-mono break-all">{String(value)}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      {stats.lastScanError && !scanError && (
+        <p className="mb-4 text-danger">{t("admin.overview.lastScanFailed", { error: stats.lastScanError })}</p>
+      )}
+      <p className="mb-4 text-neon/50">{t("admin.overview.scanHint")}</p>
       <button
-        onClick={() => void api.adminResyncLibrary().then(load)}
-        className="bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan transition-all duration-150 rounded-md px-4 py-2"
+        onClick={() => void scan()}
+        disabled={scanning || stats.scanning}
+        className="bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan transition-all duration-150 rounded-md px-4 py-2 disabled:opacity-40"
       >
-        {t("admin.overview.resync")}
+        {scanning || stats.scanning ? t("admin.overview.scanning") : t("admin.overview.scan")}
       </button>
+      {result && <p className="mt-3 text-success">{t("admin.overview.scanResult", { ...result })}</p>}
+      {scanError && <p className="mt-3 text-danger">{scanError}</p>}
     </div>
-  );
-}
-
-interface AdminTrack {
-  id: string;
-  title: string;
-  artist: string;
-  album: string;
-  navidromeYear: number | null;
-  hitsyncYear: number | null;
-  hitsyncExcluded: boolean;
-  overrideYear: number | null;
-  excludedKind: string | null;
-}
-
-function LibraryTab() {
-  const { t } = useTranslation();
-  const [q, setQ] = useState("");
-  const [excluded, setExcluded] = useState<string>("");
-  const [tracks, setTracks] = useState<AdminTrack[]>([]);
-  const [lookups, setLookups] = useState<Record<string, unknown>>({});
-
-  const search = () => {
-    void api
-      .adminTracks({ q, excluded: excluded || undefined, page: 0, pageSize: 50 })
-      .then((res) => setTracks((res.tracks as AdminTrack[]) ?? []));
-  };
-  useEffect(search, [q, excluded]);
-
-  const toggleExclude = (track: AdminTrack) => {
-    const action = track.excludedKind
-      ? api.adminDeleteExclusion("track", track.id)
-      : api.adminCreateExclusion("track", track.id, `${track.title} — ${track.artist}`);
-    void action.then(search);
-  };
-
-  const lookupYear = (id: string) => {
-    void api.adminResolveYear(id).then((res) => setLookups((prev) => ({ ...prev, [id]: res })));
-  };
-
-  const setOverride = (id: string) => {
-    const year = window.prompt(t("admin.library.overrideYearPlaceholder"));
-    if (!year) return;
-    void api.adminSetYearOverride(id, Number(year)).then(search);
-  };
-
-  return (
-    <div>
-      <div className="flex gap-2 mb-4">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={t("admin.library.search")}
-          className="neon-focus bg-black/30 border border-border rounded-lg py-2 px-3 outline-none focus:border-accent flex-1 max-w-sm transition-colors"
-        />
-        <select
-          value={excluded}
-          onChange={(e) => setExcluded(e.target.value)}
-          className="neon-focus bg-black/30 border border-border rounded-lg py-2 px-3 transition-colors"
-        >
-          <option value="">{t("admin.library.filterAll")}</option>
-          <option value="true">{t("admin.library.filterExcluded")}</option>
-          <option value="false">{t("admin.library.filterIncluded")}</option>
-        </select>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead className="text-neon/50 text-xs uppercase">
-            <tr>
-              <th className="py-2 pr-3">{t("admin.library.columnTitle")}</th>
-              <th className="py-2 pr-3">{t("admin.library.columnArtist")}</th>
-              <th className="py-2 pr-3">{t("admin.library.columnAlbum")}</th>
-              <th className="py-2 pr-3">{t("admin.library.columnYear")}</th>
-              <th className="py-2 pr-3">{t("admin.library.columnTagYear")}</th>
-              <th className="py-2 pr-3">{t("admin.library.columnOverride")}</th>
-              <th className="py-2 pr-3">{t("admin.library.columnExcluded")}</th>
-              <th className="py-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {tracks.map((track) => (
-              <tr key={track.id} className="border-b border-border/50 hover:bg-white/[0.03] transition-colors">
-                <td className="py-2 pr-3">{track.title}</td>
-                <td className="py-2 pr-3">{track.artist}</td>
-                <td className="py-2 pr-3 text-neon/50">{track.album}</td>
-                <td className="py-2 pr-3 tabular-nums">{track.navidromeYear ?? "—"}</td>
-                <td className="py-2 pr-3 tabular-nums">{track.hitsyncYear ?? "—"}</td>
-                <td className="py-2 pr-3 tabular-nums">{track.overrideYear ?? "—"}</td>
-                <td className="py-2 pr-3">{track.excludedKind ?? (track.hitsyncExcluded ? "tag" : "—")}</td>
-                <td className="py-2 flex gap-2 whitespace-nowrap">
-                  <button onClick={() => toggleExclude(track)} className="text-accent hover:underline hover:drop-shadow-neon transition-all">
-                    {track.excludedKind ? t("admin.library.include") : t("admin.library.exclude")}
-                  </button>
-                  <button onClick={() => lookupYear(track.id)} className="text-neon/60 hover:underline">
-                    {t("admin.library.lookupYear")}
-                  </button>
-                  <button onClick={() => setOverride(track.id)} className="text-neon/60 hover:underline">
-                    {t("admin.library.setOverride")}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {Object.entries(lookups).map(([id, result]) => (
-        <pre key={id} className="mt-3 bg-black/30 rounded-lg p-3 text-xs overflow-x-auto">
-          {JSON.stringify(result, null, 2)}
-        </pre>
-      ))}
-    </div>
-  );
-}
-
-function ExclusionsTab() {
-  const { t } = useTranslation();
-  const [exclusions, setExclusions] = useState<Array<{ kind: string; refId: string; label: string; reason?: string }>>([]);
-
-  const load = () => void api.adminListExclusions().then((res) => setExclusions((res.exclusions as typeof exclusions) ?? []));
-  useEffect(load, []);
-
-  if (exclusions.length === 0) return <p className="text-neon/50">{t("admin.exclusions.empty")}</p>;
-
-  return (
-    <ul className="flex flex-col gap-2 max-w-2xl">
-      {exclusions.map((e) => (
-        <li key={`${e.kind}-${e.refId}`} className="card-surface p-3 flex items-center justify-between">
-          <div>
-            <span className="text-xs uppercase text-neon/40 mr-2">{e.kind}</span>
-            {e.label}
-          </div>
-          <button
-            onClick={() => void api.adminDeleteExclusion(e.kind, e.refId).then(load)}
-            className="text-danger/80 hover:text-danger transition-colors text-xs"
-          >
-            {t("common.remove")}
-          </button>
-        </li>
-      ))}
-    </ul>
   );
 }
 

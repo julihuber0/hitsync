@@ -2,6 +2,9 @@
 .env
 .env.dev
 
+# Song card collection generated from the Navidrome library
+/config/
+
 # Local dev support (docker-compose.dev.yml)
 /dev-music/*
 !/dev-music/README.md

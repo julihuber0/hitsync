@@ -81,22 +81,17 @@ func (mg *ManagedGame) stopTrack() {
 	mg.track = nil
 }
 
-// announceNextTrack tells clients to download the head of the candidate
-// pipeline, which is the next turn's track, so that turn starts without a
-// download delay. Called whenever the head may have changed.
-func (mg *ManagedGame) announceNextTrack() {
-	if len(mg.candidates) == 0 || !turnInProgress(mg.g.Phase) {
+// announceUpcoming tells clients to download the next turn's track, so that
+// turn starts without a download delay.
+func (mg *ManagedGame) announceUpcoming() {
+	if mg.upcoming == nil || !turnInProgress(mg.g.Phase) {
 		return
 	}
-	next := mg.candidates[0].Card.TrackID
-	if next == mg.announcedTrackID {
-		return
-	}
+	next := mg.upcoming.Card.TrackID
 	url, ok := mg.mediaURL(next)
 	if !ok {
 		return
 	}
-	mg.announcedTrackID = next
 	for _, c := range mg.conns {
 		if c == nil {
 			continue
@@ -120,8 +115,8 @@ func (mg *ManagedGame) resendAudio(c *ws.Conn) {
 			}
 		}
 	}
-	if len(mg.candidates) > 0 {
-		next := mg.candidates[0].Card.TrackID
+	if mg.upcoming != nil {
+		next := mg.upcoming.Card.TrackID
 		if url, ok := mg.mediaURL(next); ok {
 			c.Send(ws.TypeTrackPreload, ws.TrackPreloadPayload{TrackID: next, MediaURL: url})
 		}

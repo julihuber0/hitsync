@@ -42,17 +42,8 @@ type Config struct {
 	MediaCacheMaxBytes int64  `env:"MEDIA_CACHE_MAX_BYTES" envDefault:"2147483648"`
 	FFmpegPath         string `env:"FFMPEG_PATH" envDefault:"ffmpeg"`
 
-	// Library and year resolution
-	LibrarySyncInterval     time.Duration `env:"LIBRARY_SYNC_INTERVAL" envDefault:"6h"`
-	MusicBrainzEnabled      bool          `env:"MUSICBRAINZ_ENABLED" envDefault:"true"`
-	MusicBrainzBaseURL      string        `env:"MUSICBRAINZ_BASE_URL" envDefault:"https://musicbrainz.org/ws/2"`
-	MusicBrainzContact      string        `env:"MUSICBRAINZ_CONTACT"`
-	MusicBrainzRatePerSec   float64       `env:"MUSICBRAINZ_RATE_PER_SEC" envDefault:"1"`
-	MusicBrainzCacheEntries int           `env:"MUSICBRAINZ_CACHE_ENTRIES" envDefault:"2000"`
-	MusicBrainzCacheTTL     time.Duration `env:"MUSICBRAINZ_CACHE_TTL" envDefault:"24h"`
-	YearLookaheadDepth      int           `env:"YEAR_LOOKAHEAD_DEPTH" envDefault:"2"`
-	YearLookupTimeout       time.Duration `env:"YEAR_LOOKUP_TIMEOUT" envDefault:"6s"`
-	YearMaxBackdate         int           `env:"YEAR_MAX_BACKDATE" envDefault:"0"`
+	// Song card collection, generated from Navidrome and hand-edited
+	CardsFile string `env:"CARDS_FILE" envDefault:"/config/cards.json"`
 
 	// Game rules and limits
 	MaxConcurrentGames   int           `env:"MAX_CONCURRENT_GAMES" envDefault:"10"`
@@ -122,8 +113,8 @@ func (c *Config) Validate() error {
 	if c.NavidromePassword == "" {
 		errs = append(errs, "NAVIDROME_PASSWORD is required")
 	}
-	if c.MusicBrainzEnabled && strings.TrimSpace(c.MusicBrainzContact) == "" {
-		errs = append(errs, "MUSICBRAINZ_CONTACT is required when MUSICBRAINZ_ENABLED=true")
+	if c.CardsFile == "" {
+		errs = append(errs, "CARDS_FILE is required")
 	}
 	if c.AudioBitrate < 32 || c.AudioBitrate > 320 {
 		errs = append(errs, "AUDIO_BITRATE must be between 32 and 320")
@@ -194,8 +185,7 @@ func (c *Config) Redacted() map[string]any {
 		"POSTGRES_USER":        c.PostgresUser,
 		"POSTGRES_PASSWORD":    mask(c.PostgresPassword),
 		"POSTGRES_DB":          c.PostgresDB,
-		"MUSICBRAINZ_ENABLED":  c.MusicBrainzEnabled,
-		"MUSICBRAINZ_CONTACT":  c.MusicBrainzContact,
+		"CARDS_FILE":           c.CardsFile,
 		"MAX_CONCURRENT_GAMES": c.MaxConcurrentGames,
 		"MIN_PLAYERS":          c.MinPlayers,
 		"MAX_PLAYERS":          c.MaxPlayers,

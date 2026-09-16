@@ -29,19 +29,18 @@ func (a *API) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	dbOK := a.st.Ping(ctx) == nil
 	navOK := a.nav.Ping(ctx) == nil
 
-	libraryTracks, _ := a.st.CountTracks(ctx)
-	eligibleTracks, _ := a.st.CountEligibleTracks(ctx, int(a.cfg.TrackMinDuration.Seconds()), int(a.cfg.TrackMaxDuration.Seconds()), a.syncer.LastSyncStart())
+	cardStats := a.cards.Stats()
 
 	status := http.StatusOK
 	if !dbOK {
 		status = http.StatusServiceUnavailable
 	}
 	writeJSON(w, status, map[string]any{
-		"status":         boolStatus(dbOK),
-		"db":             boolStatus(dbOK),
-		"navidrome":      boolStatus(navOK),
-		"libraryTracks":  libraryTracks,
-		"eligibleTracks": eligibleTracks,
+		"status":        boolStatus(dbOK),
+		"db":            boolStatus(dbOK),
+		"navidrome":     boolStatus(navOK),
+		"cards":         cardStats.Total,
+		"playableCards": cardStats.Playable,
 	})
 }
 

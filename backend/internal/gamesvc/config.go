@@ -20,9 +20,6 @@ type Config struct {
 	LobbyIdleTimeout             time.Duration
 	SkipRateLimit                time.Duration // fixed 10s per §8.11
 
-	YearLookaheadDepth int
-	YearLookupTimeout  time.Duration
-
 	AppDomain string
 	MediaTTL  time.Duration // lifetime of a media download URL
 }

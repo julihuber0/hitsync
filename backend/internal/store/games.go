@@ -75,3 +75,10 @@ func (s *Store) SaveGameResult(ctx context.Context, r GameResult) error {
 	`, r.GameID, r.StartedAt, r.EndedAt, r.PlayerCount, nullableString(r.WinnerName), r.TurnsPlayed)
 	return err
 }
+
+func nullableString(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
