@@ -74,12 +74,18 @@ type Turn struct {
 	// from the seat after the active player (§8.8 rule 2).
 	Order []string
 
-	Challenges map[string]int // playerID -> claimed slot
-	// ChallengePreviews are revisable, public slot selections. They do not
-	// spend a token or count as an action until Challenge is called.
+	// StealClaims are the players who pressed Steal while the steal window
+	// was open. The token is spent on claiming; placing has no time limit.
+	StealClaims map[string]bool
+	// StealWindowClosed is set once the steal window has elapsed; no new
+	// claims or passes are accepted afterwards.
+	StealWindowClosed bool
+	Challenges        map[string]int // playerID -> placed steal slot
+	// ChallengePreviews are revisable, public slot selections of claimants
+	// who haven't placed yet.
 	ChallengePreviews map[string]int
 	Passed            map[string]bool
-	Spent             map[string]int // playerID -> tokens spent challenging this turn
+	Spent             map[string]int // playerID -> tokens spent stealing this turn
 }
 
 // Reveal is the outcome of resolving a turn (§8.5 REVEALING, §8.8).
@@ -133,6 +139,8 @@ var (
 	ErrSlotIsActiveSlot = errors.New("cannot challenge the active player's own slot")
 	ErrNoTokens         = errors.New("no tokens remaining")
 	ErrAlreadyActed     = errors.New("already challenged or passed this turn")
+	ErrStealWindowOver  = errors.New("the steal window has closed")
+	ErrStealNotClaimed  = errors.New("press steal before placing a steal")
 	ErrDuplicateName    = errors.New("display name already in use")
 	ErrInvalidName      = errors.New("invalid display name")
 	ErrPaletteExhausted = errors.New("no colours left in the palette")

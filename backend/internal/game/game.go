@@ -109,6 +109,7 @@ func (g *Game) RemovePlayer(playerID string, minPlayers int) (endedNoWinner bool
 	g.Players = append(g.Players[:idx], g.Players[idx+1:]...)
 
 	if g.Turn != nil {
+		delete(g.Turn.StealClaims, playerID)
 		delete(g.Turn.Challenges, playerID)
 		delete(g.Turn.ChallengePreviews, playerID)
 		delete(g.Turn.Passed, playerID)

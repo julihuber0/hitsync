@@ -39,6 +39,9 @@ func dispatchMessage(mg *ManagedGame, c *ws.Conn, env ws.Envelope) {
 			mg.handlePlacePreview(c.PlayerID, p.SlotIndex)
 		}
 
+	case ws.TypeClaimSteal:
+		mg.handleClaimSteal(c.PlayerID)
+
 	case ws.TypeChallenge:
 		var p ws.ChallengePayload
 		if json.Unmarshal(env.Payload, &p) == nil {
@@ -90,7 +93,7 @@ func dispatchMessage(mg *ManagedGame, c *ws.Conn, env ws.Envelope) {
 			mg.g.Turn = nil
 			mg.beginNextTurn(true)
 		default:
-			mg.broadcastState()
+			mg.afterPlayerRemoved()
 		}
 
 	default:

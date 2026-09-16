@@ -82,6 +82,7 @@
     "steal": "Steal card (1 token)",
     "stealing": "Choose a different spot in {{name}}'s timeline",
     "submitSteal": "Submit steal",
+    "waitingForStealers": "Waiting for {{names}} to place their steal…",
     "otherTimelines": "Other players",
     "yourTimeline": "Your timeline",
     "previewingSteal": "{{name}} is considering this spot",

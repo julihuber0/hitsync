@@ -65,6 +65,7 @@ func (g *Game) BeginTurn(track Card) error {
 		PlacementSlot:        -2, // sentinel: not yet submitted
 		PlacementPreviewSlot: -2, // sentinel: none selected
 		Order:                g.seatOrderFrom(g.ActivePlayerIdx),
+		StealClaims:          map[string]bool{},
 		Challenges:           map[string]int{},
 		ChallengePreviews:    map[string]int{},
 		Passed:               map[string]bool{},
@@ -171,11 +172,20 @@ func (g *Game) anyChallengerHasTokens() bool {
 	return false
 }
 
-// PreviewChallenge records a player's currently selected alternative slot.
-// The preview remains public and can be changed freely until final submission.
-func (g *Game) PreviewChallenge(playerID string, slotIndex int) error {
+// Stealing (§8.5 CHALLENGING) has two stages. While the steal window is open,
+// every other player holding a token may press Steal (ClaimSteal), which
+// spends the token and cannot be undone, or pass. When the window closes
+// (CloseStealWindow), unclaimed players are out. Claimants place their steal
+// (Challenge) without a time limit; the phase ends once every claimant has
+// placed and nobody else can still claim.
+
+// ClaimSteal commits a non-active player to stealing, spending one token.
+func (g *Game) ClaimSteal(playerID string) error {
 	if g.Phase != PhaseChallenging {
 		return ErrWrongPhase
+	}
+	if g.Turn.StealWindowClosed {
+		return ErrStealWindowOver
 	}
 	if playerID == g.Turn.ActivePlayerID {
 		return ErrIsActivePlayer
@@ -184,11 +194,60 @@ func (g *Game) PreviewChallenge(playerID string, slotIndex int) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	if _, done := g.Turn.Challenges[playerID]; done || g.Turn.Passed[playerID] {
+	if g.Turn.StealClaims[playerID] || g.Turn.Passed[playerID] {
 		return ErrAlreadyActed
 	}
 	if p.Tokens <= 0 {
 		return ErrNoTokens
+	}
+	p.Tokens--
+	g.Turn.Spent[playerID]++
+	g.Turn.StealClaims[playerID] = true
+	return nil
+}
+
+// PreviewChallenge records a claimant's currently selected alternative slot.
+// The preview remains public and can be changed freely until placement.
+func (g *Game) PreviewChallenge(playerID string, slotIndex int) error {
+	if err := g.checkCanPlaceSteal(playerID, slotIndex); err != nil {
+		return err
+	}
+	g.Turn.ChallengePreviews[playerID] = slotIndex
+	return nil
+}
+
+// Challenge places a claimant's steal on a slot of the active player's
+// timeline. Returns whether stealing is now complete, in which case the
+// phase has moved on to REVEALING.
+func (g *Game) Challenge(playerID string, slotIndex int) (phaseComplete bool, err error) {
+	if err := g.checkCanPlaceSteal(playerID, slotIndex); err != nil {
+		return false, err
+	}
+	for _, taken := range g.Turn.Challenges {
+		if taken == slotIndex {
+			return false, ErrSlotTaken
+		}
+	}
+	delete(g.Turn.ChallengePreviews, playerID)
+	g.Turn.Challenges[playerID] = slotIndex
+	return g.FinishStealingIfComplete(), nil
+}
+
+func (g *Game) checkCanPlaceSteal(playerID string, slotIndex int) error {
+	if g.Phase != PhaseChallenging {
+		return ErrWrongPhase
+	}
+	if playerID == g.Turn.ActivePlayerID {
+		return ErrIsActivePlayer
+	}
+	if g.Player(playerID) == nil {
+		return ErrPlayerNotFound
+	}
+	if !g.Turn.StealClaims[playerID] {
+		return ErrStealNotClaimed
+	}
+	if _, placed := g.Turn.Challenges[playerID]; placed {
+		return ErrAlreadyActed
 	}
 	n := len(g.ActivePlayer().Timeline)
 	if slotIndex < 0 || slotIndex > n {
@@ -197,62 +256,17 @@ func (g *Game) PreviewChallenge(playerID string, slotIndex int) error {
 	if slotIndex == g.Turn.PlacementSlot {
 		return ErrSlotIsActiveSlot
 	}
-	g.Turn.ChallengePreviews[playerID] = slotIndex
 	return nil
 }
 
-// Challenge records a non-active player's slot claim, spending one token
-// immediately (§8.5 CHALLENGING, §8.8). Returns whether every eligible
-// player has now challenged or passed, so the phase can end immediately.
-func (g *Game) Challenge(playerID string, slotIndex int) (phaseComplete bool, err error) {
-	if g.Phase != PhaseChallenging {
-		return false, ErrWrongPhase
-	}
-	if playerID == g.Turn.ActivePlayerID {
-		return false, ErrIsActivePlayer
-	}
-	p := g.Player(playerID)
-	if p == nil {
-		return false, ErrPlayerNotFound
-	}
-	if _, done := g.Turn.Challenges[playerID]; done {
-		return false, ErrAlreadyActed
-	}
-	if g.Turn.Passed[playerID] {
-		return false, ErrAlreadyActed
-	}
-	if p.Tokens <= 0 {
-		return false, ErrNoTokens
-	}
-	active := g.ActivePlayer()
-	n := len(active.Timeline)
-	if slotIndex < 0 || slotIndex > n {
-		return false, ErrInvalidSlot
-	}
-	if slotIndex == g.Turn.PlacementSlot {
-		return false, ErrSlotIsActiveSlot
-	}
-	for _, taken := range g.Turn.Challenges {
-		if taken == slotIndex {
-			return false, ErrSlotTaken
-		}
-	}
-
-	p.Tokens--
-	delete(g.Turn.ChallengePreviews, playerID)
-	g.Turn.Challenges[playerID] = slotIndex
-	g.Turn.Spent[playerID]++
-	done := g.allEligibleDone()
-	if done {
-		g.finishChallenging()
-	}
-	return done, nil
-}
-
-// PassChallenge records a player's explicit early exit from challenging.
+// PassChallenge records a player's explicit decision not to steal while the
+// steal window is open.
 func (g *Game) PassChallenge(playerID string) (phaseComplete bool, err error) {
 	if g.Phase != PhaseChallenging {
 		return false, ErrWrongPhase
+	}
+	if g.Turn.StealWindowClosed {
+		return false, ErrStealWindowOver
 	}
 	if playerID == g.Turn.ActivePlayerID {
 		return false, ErrIsActivePlayer
@@ -260,49 +274,58 @@ func (g *Game) PassChallenge(playerID string) (phaseComplete bool, err error) {
 	if g.Player(playerID) == nil {
 		return false, ErrPlayerNotFound
 	}
-	if _, done := g.Turn.Challenges[playerID]; done {
-		return false, ErrAlreadyActed
-	}
-	if g.Turn.Passed[playerID] {
+	if g.Turn.StealClaims[playerID] || g.Turn.Passed[playerID] {
 		return false, ErrAlreadyActed
 	}
 	g.Turn.Passed[playerID] = true
-	delete(g.Turn.ChallengePreviews, playerID)
-	done := g.allEligibleDone()
-	if done {
-		g.finishChallenging()
-	}
-	return done, nil
+	return g.FinishStealingIfComplete(), nil
 }
 
-// allEligibleDone reports whether every player who could still challenge
-// (not active, holds >=1 token, hasn't already acted) has challenged or
-// passed.
-func (g *Game) allEligibleDone() bool {
-	for _, p := range g.Players {
-		if p.ID == g.Turn.ActivePlayerID {
-			continue
-		}
-		_, challenged := g.Turn.Challenges[p.ID]
-		passed := g.Turn.Passed[p.ID]
-		if challenged || passed {
-			continue
-		}
-		if p.Tokens > 0 {
-			return false
+// CloseStealWindow ends the time for pressing Steal. Returns whether
+// stealing is complete (nobody claimed, or every claimant has placed), in
+// which case the phase has moved on to REVEALING.
+func (g *Game) CloseStealWindow() (phaseComplete bool, err error) {
+	if g.Phase != PhaseChallenging {
+		return false, ErrWrongPhase
+	}
+	g.Turn.StealWindowClosed = true
+	return g.FinishStealingIfComplete(), nil
+}
+
+// FinishStealingIfComplete moves CHALLENGING to REVEALING once every claimant
+// has placed and no other player can still claim. Callers also use it after
+// a player leaves, since a departed claimant no longer holds up the turn.
+func (g *Game) FinishStealingIfComplete() bool {
+	if g.Phase != PhaseChallenging || len(g.PendingStealers()) > 0 {
+		return false
+	}
+	if !g.Turn.StealWindowClosed {
+		for _, p := range g.Players {
+			if p.ID != g.Turn.ActivePlayerID && !g.Turn.StealClaims[p.ID] && !g.Turn.Passed[p.ID] && p.Tokens > 0 {
+				return false
+			}
 		}
 	}
+	g.finishChallenging()
 	return true
 }
 
-// ChallengeTimeout forces the end of the CHALLENGING phase when its window
-// elapses, regardless of stragglers.
-func (g *Game) ChallengeTimeout() error {
-	if g.Phase != PhaseChallenging {
-		return ErrWrongPhase
+// PendingStealers returns, in seat order, the claimants who haven't placed
+// their steal yet.
+func (g *Game) PendingStealers() []string {
+	if g.Turn == nil {
+		return nil
 	}
-	g.Phase = PhaseRevealing
-	return nil
+	var pending []string
+	for _, id := range g.Turn.Order {
+		if !g.Turn.StealClaims[id] || g.Player(id) == nil {
+			continue
+		}
+		if _, placed := g.Turn.Challenges[id]; !placed {
+			pending = append(pending, id)
+		}
+	}
+	return pending
 }
 
 // SkipTrack abandons the current turn without scoring (§8.11). The caller

@@ -69,6 +69,19 @@ func startTurn(t *testing.T, g *Game, track Card) {
 	}
 }
 
+// steal claims a steal for playerID and places it on slot.
+func steal(t *testing.T, g *Game, playerID string, slot int) (phaseComplete bool) {
+	t.Helper()
+	if err := g.ClaimSteal(playerID); err != nil {
+		t.Fatalf("claim steal %s: %v", playerID, err)
+	}
+	done, err := g.Challenge(playerID, slot)
+	if err != nil {
+		t.Fatalf("place steal %s: %v", playerID, err)
+	}
+	return done
+}
+
 func TestChallengeResolution(t *testing.T) {
 	t.Run("active correct, challenges ignored", func(t *testing.T) {
 		g, ids := newTestGame(t, "Anna", "Bob", "Cara")
@@ -85,11 +98,9 @@ func TestChallengeResolution(t *testing.T) {
 		if g.Phase != PhaseChallenging {
 			t.Fatalf("expected CHALLENGING, got %s", g.Phase)
 		}
-		if _, err := g.Challenge(ids["Bob"], 0); err != nil {
-			t.Fatalf("challenge: %v", err)
-		}
-		if err := g.ChallengeTimeout(); err != nil {
-			t.Fatalf("challenge timeout: %v", err)
+		steal(t, g, ids["Bob"], 0)
+		if _, err := g.CloseStealWindow(); err != nil {
+			t.Fatalf("close steal window: %v", err)
 		}
 		reveal, err := g.Resolve()
 		if err != nil {
@@ -115,9 +126,7 @@ func TestChallengeResolution(t *testing.T) {
 		if _, err := g.PlaceCard(ids["Anna"], 0); err != nil { // wrong: before 1980, but year 1990
 			t.Fatalf("place: %v", err)
 		}
-		if _, err := g.Challenge(ids["Bob"], 1); err != nil { // correct: after 1980
-			t.Fatalf("challenge: %v", err)
-		}
+		steal(t, g, ids["Bob"], 1) // correct: after 1980
 		if _, err := g.PassChallenge(ids["Cara"]); err != nil {
 			t.Fatalf("pass: %v", err)
 		}
@@ -149,15 +158,12 @@ func TestChallengeResolution(t *testing.T) {
 		if _, err := g.PlaceCard(ids["Anna"], 0); err != nil { // wrong
 			t.Fatalf("place: %v", err)
 		}
-		if _, err := g.Challenge(ids["Bob"], 1); err != nil {
-			t.Fatalf("challenge bob: %v", err)
+		steal(t, g, ids["Bob"], 1)
+		if err := g.ClaimSteal(ids["Cara"]); err != nil {
+			t.Fatalf("claim cara: %v", err)
 		}
-		caraTokensBefore := g.Player(ids["Cara"]).Tokens
 		if _, err := g.Challenge(ids["Cara"], 1); err != ErrSlotTaken {
 			t.Fatalf("expected ErrSlotTaken, got %v", err)
-		}
-		if g.Player(ids["Cara"]).Tokens != caraTokensBefore {
-			t.Error("expected no token spent on a rejected challenge")
 		}
 	})
 
@@ -172,16 +178,9 @@ func TestChallengeResolution(t *testing.T) {
 		}
 		// Bob and Cara claim distinct wrong slots; only Dan (last in seat order:
 		// Bob, Cara, Dan) picks the actually-correct slot.
-		if _, err := g.Challenge(ids["Bob"], 1); err != nil { // wrong slot
-			t.Fatalf("challenge bob: %v", err)
-		}
-		if _, err := g.Challenge(ids["Cara"], 3); err != nil { // wrong slot
-			t.Fatalf("challenge cara: %v", err)
-		}
-		done, err := g.Challenge(ids["Dan"], 2) // correct slot
-		if err != nil {
-			t.Fatalf("challenge dan: %v", err)
-		}
+		steal(t, g, ids["Bob"], 1)         // wrong slot
+		steal(t, g, ids["Cara"], 3)        // wrong slot
+		done := steal(t, g, ids["Dan"], 2) // correct slot
 		if !done {
 			t.Fatal("expected challenging phase complete once everyone has acted")
 		}
@@ -201,9 +200,7 @@ func TestChallengeResolution(t *testing.T) {
 		if _, err := g.PlaceCard(ids["Anna"], 0); err != nil { // wrong: 1980 doesn't fit before 1970
 			t.Fatalf("place: %v", err)
 		}
-		if _, err := g.Challenge(ids["Bob"], 2); err != nil { // also wrong: 1980 doesn't fit after 1990
-			t.Fatalf("challenge: %v", err)
-		}
+		steal(t, g, ids["Bob"], 2) // also wrong: 1980 doesn't fit after 1990
 		if _, err := g.PassChallenge(ids["Cara"]); err != nil {
 			t.Fatalf("pass: %v", err)
 		}
@@ -244,7 +241,7 @@ func TestChallengeResolution(t *testing.T) {
 	})
 }
 
-func TestChallengePreviewIsRevisableAndDoesNotSpendToken(t *testing.T) {
+func TestChallengePreviewRequiresClaimAndIsRevisable(t *testing.T) {
 	g, ids := newTestGame(t, "Anna", "Bob")
 	g.Player(ids["Anna"]).Timeline = []Card{{Year: 1980}, {Year: 2000}}
 	startTurn(t, g, Card{TrackID: "t1", Year: 1990})
@@ -252,15 +249,18 @@ func TestChallengePreviewIsRevisableAndDoesNotSpendToken(t *testing.T) {
 		t.Fatalf("place: %v", err)
 	}
 
+	if err := g.PreviewChallenge(ids["Bob"], 1); err != ErrStealNotClaimed {
+		t.Fatalf("preview before claim: got %v, want ErrStealNotClaimed", err)
+	}
 	before := g.Player(ids["Bob"]).Tokens
+	if err := g.ClaimSteal(ids["Bob"]); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+	if got := g.Player(ids["Bob"]).Tokens; got != before-1 {
+		t.Fatalf("claim tokens = %d, want %d", got, before-1)
+	}
 	if err := g.PreviewChallenge(ids["Bob"], 1); err != nil {
 		t.Fatalf("preview: %v", err)
-	}
-	if got := g.Turn.ChallengePreviews[ids["Bob"]]; got != 1 {
-		t.Fatalf("preview slot = %d, want 1", got)
-	}
-	if got := g.Player(ids["Bob"]).Tokens; got != before {
-		t.Fatalf("preview spent token: got %d, want %d", got, before)
 	}
 	if err := g.PreviewChallenge(ids["Bob"], 2); err != nil {
 		t.Fatalf("replace preview: %v", err)
@@ -272,16 +272,108 @@ func TestChallengePreviewIsRevisableAndDoesNotSpendToken(t *testing.T) {
 		t.Fatalf("final challenge: %v", err)
 	}
 	if _, ok := g.Turn.ChallengePreviews[ids["Bob"]]; ok {
-		t.Error("expected final challenge to clear preview")
+		t.Error("expected placement to clear preview")
 	}
 	if got := g.Player(ids["Bob"]).Tokens; got != before-1 {
-		t.Fatalf("final challenge tokens = %d, want %d", got, before-1)
+		t.Fatalf("placing must not spend another token: %d, want %d", got, before-1)
 	}
 }
 
+func TestStealWindow(t *testing.T) {
+	setup := func(t *testing.T) (*Game, map[string]string) {
+		g, ids := newTestGame(t, "Anna", "Bob", "Cara")
+		g.Player(ids["Anna"]).Timeline = []Card{{Year: 1980}}
+		startTurn(t, g, Card{TrackID: "t1", Year: 1990})
+		if _, err := g.PlaceCard(ids["Anna"], 0); err != nil {
+			t.Fatalf("place: %v", err)
+		}
+		return g, ids
+	}
+
+	t.Run("claimant has unlimited time after the window closes", func(t *testing.T) {
+		g, ids := setup(t)
+		if err := g.ClaimSteal(ids["Bob"]); err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+		done, err := g.CloseStealWindow()
+		if err != nil || done {
+			t.Fatalf("close window: done=%v err=%v; want phase to wait for Bob", done, err)
+		}
+		if g.Phase != PhaseChallenging {
+			t.Fatalf("phase = %s, want CHALLENGING", g.Phase)
+		}
+		if err := g.ClaimSteal(ids["Cara"]); err != ErrStealWindowOver {
+			t.Fatalf("late claim: got %v, want ErrStealWindowOver", err)
+		}
+		if _, err := g.PassChallenge(ids["Cara"]); err != ErrStealWindowOver {
+			t.Fatalf("late pass: got %v, want ErrStealWindowOver", err)
+		}
+		if pending := g.PendingStealers(); len(pending) != 1 || pending[0] != ids["Bob"] {
+			t.Fatalf("pending = %v, want [Bob]", pending)
+		}
+		done, err = g.Challenge(ids["Bob"], 1)
+		if err != nil || !done || g.Phase != PhaseRevealing {
+			t.Fatalf("place: done=%v err=%v phase=%s", done, err, g.Phase)
+		}
+	})
+
+	t.Run("no claims ends stealing when the window closes", func(t *testing.T) {
+		g, _ := setup(t)
+		done, err := g.CloseStealWindow()
+		if err != nil || !done || g.Phase != PhaseRevealing {
+			t.Fatalf("done=%v err=%v phase=%s", done, err, g.Phase)
+		}
+	})
+
+	t.Run("open window waits for undecided players", func(t *testing.T) {
+		g, ids := setup(t)
+		if done := steal(t, g, ids["Bob"], 1); done {
+			t.Fatal("Cara can still claim; stealing must not be complete")
+		}
+		done, err := g.PassChallenge(ids["Cara"])
+		if err != nil || !done {
+			t.Fatalf("pass: done=%v err=%v", done, err)
+		}
+	})
+
+	t.Run("claim is binding", func(t *testing.T) {
+		g, ids := setup(t)
+		if err := g.ClaimSteal(ids["Bob"]); err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+		if _, err := g.PassChallenge(ids["Bob"]); err != ErrAlreadyActed {
+			t.Fatalf("pass after claim: got %v, want ErrAlreadyActed", err)
+		}
+		if err := g.ClaimSteal(ids["Bob"]); err != ErrAlreadyActed {
+			t.Fatalf("second claim: got %v, want ErrAlreadyActed", err)
+		}
+	})
+
+	t.Run("a departed claimant no longer holds up the turn", func(t *testing.T) {
+		g, ids := newTestGame(t, "Anna", "Bob", "Cara", "Dan")
+		g.Player(ids["Anna"]).Timeline = []Card{{Year: 1980}}
+		startTurn(t, g, Card{TrackID: "t1", Year: 1990})
+		if _, err := g.PlaceCard(ids["Anna"], 0); err != nil {
+			t.Fatalf("place: %v", err)
+		}
+		if err := g.ClaimSteal(ids["Bob"]); err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+		if done, _ := g.CloseStealWindow(); done {
+			t.Fatal("expected to wait for Bob")
+		}
+		if ended := g.RemovePlayer(ids["Bob"], 2); ended {
+			t.Fatal("game should continue with 3 players")
+		}
+		if !g.FinishStealingIfComplete() || g.Phase != PhaseRevealing {
+			t.Fatalf("phase = %s, want REVEALING", g.Phase)
+		}
+	})
+}
+
 func TestTokenAccounting(t *testing.T) {
-	g, ids := newTestGame(t, "Anna", "Bob", "Cara")
-	g.Player(ids["Anna"]).Timeline = []Card{{Year: 1980}}
+	g, ids := newTestGame(t, "Anna", "Bob", "Cara", "Dan")
+	g.Player(ids["Anna"]).Timeline = []Card{{Year: 1980}, {Year: 2000}}
 	startTurn(t, g, Card{TrackID: "t1", Year: 1990})
 	_, _ = g.PlaceCard(ids["Anna"], 0) // wrong
 
@@ -289,13 +381,20 @@ func TestTokenAccounting(t *testing.T) {
 	if bob.Tokens != 2 {
 		t.Fatalf("expected Bob to start with 2 tokens, got %d", bob.Tokens)
 	}
-	if _, err := g.Challenge(ids["Bob"], 1); err != nil {
-		t.Fatalf("challenge: %v", err)
+	if err := g.ClaimSteal(ids["Bob"]); err != nil {
+		t.Fatalf("claim: %v", err)
 	}
 	if bob.Tokens != 1 {
-		t.Errorf("expected token spent immediately, got %d", bob.Tokens)
+		t.Errorf("expected token spent on pressing steal, got %d", bob.Tokens)
+	}
+	if _, err := g.Challenge(ids["Bob"], 1); err != nil { // correct
+		t.Fatalf("challenge: %v", err)
 	}
 
+	cara := g.Player(ids["Cara"])
+	if err := g.ClaimSteal(ids["Cara"]); err != nil {
+		t.Fatalf("claim cara: %v", err)
+	}
 	// Cannot claim an already-taken slot.
 	if _, err := g.Challenge(ids["Cara"], 1); err != ErrSlotTaken {
 		t.Errorf("expected ErrSlotTaken, got %v", err)
@@ -304,15 +403,20 @@ func TestTokenAccounting(t *testing.T) {
 	if _, err := g.Challenge(ids["Cara"], 0); err != ErrSlotIsActiveSlot {
 		t.Errorf("expected ErrSlotIsActiveSlot, got %v", err)
 	}
+	if cara.Tokens != 1 {
+		t.Errorf("expected exactly one token spent by Cara, got %d left", cara.Tokens)
+	}
 
-	cara := g.Player(ids["Cara"])
-	cara.Tokens = 0
-	if _, err := g.Challenge(ids["Cara"], 2); err != ErrNoTokens {
+	g.Player(ids["Dan"]).Tokens = 0
+	if err := g.ClaimSteal(ids["Dan"]); err != ErrNoTokens {
 		t.Errorf("expected ErrNoTokens, got %v", err)
 	}
 
-	if err := g.ChallengeTimeout(); err != nil {
-		t.Fatalf("challenge timeout: %v", err)
+	if done, err := g.CloseStealWindow(); err != nil || done {
+		t.Fatalf("close steal window: done=%v err=%v; want to wait for Cara", done, err)
+	}
+	if done, err := g.Challenge(ids["Cara"], 2); err != nil || !done {
+		t.Fatalf("cara places after window: done=%v err=%v", done, err)
 	}
 	reveal, err := g.Resolve()
 	if err != nil {
@@ -324,6 +428,9 @@ func TestTokenAccounting(t *testing.T) {
 	if bob.Tokens != 2 {
 		t.Errorf("expected Bob's token refunded to 2, got %d", bob.Tokens)
 	}
+	if cara.Tokens != 1 {
+		t.Errorf("expected Cara's wrong steal to cost her token, got %d", cara.Tokens)
+	}
 }
 
 func TestTokenCapOnRefund(t *testing.T) {
@@ -332,9 +439,7 @@ func TestTokenCapOnRefund(t *testing.T) {
 	g.Player(ids["Bob"]).Tokens = g.Settings.MaxTokens
 	startTurn(t, g, Card{TrackID: "t1", Year: 1990})
 	_, _ = g.PlaceCard(ids["Anna"], 0) // wrong
-	if _, err := g.Challenge(ids["Bob"], 1); err != nil {
-		t.Fatalf("challenge: %v", err)
-	}
+	steal(t, g, ids["Bob"], 1)
 	reveal, err := g.Resolve()
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
@@ -356,7 +461,7 @@ func TestWinCondition(t *testing.T) {
 		t.Fatalf("place: %v", err)
 	}
 	if g.Phase == PhaseChallenging {
-		_ = g.ChallengeTimeout()
+		_, _ = g.CloseStealWindow()
 	}
 	reveal, err := g.Resolve()
 	if err != nil {
@@ -381,7 +486,7 @@ func TestTurnRotation(t *testing.T) {
 		seen = append(seen, g.Turn.ActivePlayerID)
 		_, _ = g.PlaceCard(g.Turn.ActivePlayerID, len(g.ActivePlayer().Timeline))
 		if g.Phase == PhaseChallenging {
-			_ = g.ChallengeTimeout()
+			_, _ = g.CloseStealWindow()
 		}
 		_, _ = g.Resolve()
 		if g.Phase == PhaseGameOver {
@@ -408,7 +513,7 @@ func TestTurnRotationPastRemovedPlayer(t *testing.T) {
 	}
 	_, _ = g.PlaceCard(ids["Anna"], len(g.ActivePlayer().Timeline))
 	if g.Phase == PhaseChallenging {
-		_ = g.ChallengeTimeout()
+		_, _ = g.CloseStealWindow()
 	}
 	_, _ = g.Resolve()
 	g.Phase = PhaseRevealing

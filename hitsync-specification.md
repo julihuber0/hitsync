@@ -105,6 +105,15 @@ port, or CORS configuration exists.
 
 `LOBBY -> PREPARING -> PLACING -> CHALLENGING -> REVEALING -> ...`
 
+In `CHALLENGING`, the other players have `TURN_CHALLENGE_WINDOW` (5 s) to press
+Steal (`claim_steal`), or to pass. Pressing Steal spends a token at once and
+can't be undone. After the window, claimants choose their slot (`challenge`)
+without a time limit, and the turn reveals once every claimant has placed. If
+nobody claimed, it reveals when the window ends or everyone has passed. A
+claimant who leaves or is removed no longer holds up the turn; a disconnected
+one is removed after `PLAYER_RECONNECT_GRACE`, like an absent active player.
+The song keeps looping throughout and stops at the reveal.
+
 The eight-second preparing cap bounds how long a turn waits for clients'
 downloads; a client that is still downloading afterwards joins playback in
 sync once it is done. Placement and challenge

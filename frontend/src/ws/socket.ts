@@ -168,6 +168,9 @@ export class GameSocket {
   previewPlacement(slotIndex: number): void {
     this.send("place_preview", { slotIndex });
   }
+  claimSteal(): void {
+    this.send("claim_steal", {});
+  }
   challenge(slotIndex: number): void {
     this.send("challenge", { slotIndex });
   }

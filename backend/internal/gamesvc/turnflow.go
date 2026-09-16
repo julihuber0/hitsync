@@ -172,13 +172,25 @@ func (mg *ManagedGame) onPlacementTimeout() {
 	mg.afterPlacement(skip)
 }
 
+// afterPlacement opens the steal window: other players get
+// TurnChallengeWindow to press Steal; placing a claimed steal has no limit.
 func (mg *ManagedGame) afterPlacement(skipChallenge bool) {
 	if skipChallenge {
 		mg.clearPhaseTimeout()
 		mg.beginRevealing()
 		return
 	}
-	mg.schedulePhaseTimeout(mg.cfg.TurnChallengeWindow, mg.onChallengeTimeout)
+	mg.schedulePhaseTimeout(mg.cfg.TurnChallengeWindow, mg.onStealWindowTimeout)
+	mg.broadcastState()
+}
+
+func (mg *ManagedGame) handleClaimSteal(playerID string) {
+	if err := mg.g.ClaimSteal(playerID); err != nil {
+		if c := mg.conns[playerID]; c != nil {
+			mg.sendError(c, "invalid_steal", err.Error())
+		}
+		return
+	}
 	mg.broadcastState()
 }
 
@@ -224,9 +236,30 @@ func (mg *ManagedGame) handlePassChallenge(playerID string) {
 	mg.broadcastState()
 }
 
-func (mg *ManagedGame) onChallengeTimeout() {
-	_ = mg.g.ChallengeTimeout()
-	mg.beginRevealing()
+// onStealWindowTimeout closes the steal window. Claimants who haven't
+// placed yet keep the turn open, without a deadline, until they do.
+func (mg *ManagedGame) onStealWindowTimeout() {
+	done, err := mg.g.CloseStealWindow()
+	if err != nil {
+		return
+	}
+	mg.clearPhaseTimeout()
+	if done {
+		mg.beginRevealing()
+		return
+	}
+	mg.broadcastState()
+}
+
+// afterPlayerRemoved finishes stealing if the removed player was the last
+// claimant still to place, and otherwise just publishes the new state.
+func (mg *ManagedGame) afterPlayerRemoved() {
+	if mg.g.FinishStealingIfComplete() {
+		mg.clearPhaseTimeout()
+		mg.beginRevealing()
+		return
+	}
+	mg.broadcastState()
 }
 
 // beginRevealing resolves the turn, applies the song-guess bonus, broadcasts
@@ -349,7 +382,7 @@ func (mg *ManagedGame) handleKickPlayer(hostID, targetID string) {
 		mg.beginNextTurn(true)
 		return
 	}
-	mg.broadcastState()
+	mg.afterPlayerRemoved()
 }
 
 func (mg *ManagedGame) handleAdjustTokens(hostID, targetID string, delta int) {

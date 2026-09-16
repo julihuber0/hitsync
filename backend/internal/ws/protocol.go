@@ -21,6 +21,7 @@ const (
 	TypeStartGame        = "start_game"
 	TypePlaceCard        = "place_card"
 	TypePlacePreview     = "place_preview"
+	TypeClaimSteal       = "claim_steal"
 	TypeChallenge        = "challenge"
 	TypeChallengePreview = "challenge_preview"
 	TypePassChallenge    = "pass_challenge"
@@ -87,7 +88,7 @@ type PlacePreviewPayload struct {
 	SlotIndex int `json:"slotIndex"`
 }
 
-// ChallengePayload claims a slot during CHALLENGING.
+// ChallengePayload places a claimed steal on a slot during CHALLENGING.
 type ChallengePayload struct {
 	SlotIndex int `json:"slotIndex"`
 }

@@ -43,6 +43,8 @@ type TurnState struct {
 	PlacementSubmitted bool
 	PlacementSlot      int
 	Order              []string
+	StealClaims        map[string]bool
+	StealWindowClosed  bool
 	Challenges         map[string]int
 	ChallengePreviews  map[string]int
 	Passed             map[string]bool
@@ -77,7 +79,8 @@ func (g *Game) ExportState() State {
 		s.Turn = &TurnState{
 			Number: g.Turn.Number, ActivePlayerID: g.Turn.ActivePlayerID, Track: g.Turn.Track,
 			PlacementSubmitted: g.Turn.PlacementSubmitted, PlacementSlot: g.Turn.PlacementSlot,
-			Order:      append([]string(nil), g.Turn.Order...),
+			Order:       append([]string(nil), g.Turn.Order...),
+			StealClaims: copyBoolMap(g.Turn.StealClaims), StealWindowClosed: g.Turn.StealWindowClosed,
 			Challenges: copyIntMap(g.Turn.Challenges), ChallengePreviews: copyIntMap(g.Turn.ChallengePreviews), Passed: copyBoolMap(g.Turn.Passed),
 			Spent: copyIntMap(g.Turn.Spent),
 		}
@@ -107,7 +110,8 @@ func RestoreState(s State) *Game {
 		g.Turn = &Turn{
 			Number: s.Turn.Number, ActivePlayerID: s.Turn.ActivePlayerID, Track: s.Turn.Track,
 			PlacementSubmitted: s.Turn.PlacementSubmitted, PlacementSlot: s.Turn.PlacementSlot,
-			Order:      append([]string(nil), s.Turn.Order...),
+			Order:       append([]string(nil), s.Turn.Order...),
+			StealClaims: copyBoolMap(s.Turn.StealClaims), StealWindowClosed: s.Turn.StealWindowClosed,
 			Challenges: copyIntMap(s.Turn.Challenges), ChallengePreviews: copyIntMap(s.Turn.ChallengePreviews), Passed: copyBoolMap(s.Turn.Passed),
 			Spent: copyIntMap(s.Turn.Spent),
 		}

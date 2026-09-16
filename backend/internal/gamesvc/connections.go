@@ -72,5 +72,5 @@ func (mg *ManagedGame) onReconnectGraceExpired(playerID string) {
 		mg.beginNextTurn(true)
 		return
 	}
-	mg.broadcastState()
+	mg.afterPlayerRemoved()
 }

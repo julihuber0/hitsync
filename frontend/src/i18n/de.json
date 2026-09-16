@@ -82,6 +82,7 @@
     "steal": "Karte stehlen (1 Token)",
     "stealing": "Wähle einen anderen Platz in {{name}}s Zeitleiste",
     "submitSteal": "Stehlen bestätigen",
+    "waitingForStealers": "Warte darauf, dass {{names}} den Diebstahl platziert…",
     "otherTimelines": "Andere Spieler",
     "yourTimeline": "Deine Zeitleiste",
     "previewingSteal": "{{name}} zieht diesen Platz in Betracht",

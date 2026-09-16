@@ -43,6 +43,12 @@ type CurrentTurnView struct {
 	ActivePlacementPreviewSlot *int     `json:"activePlacementPreviewSlot"`
 	ChallengeSlotsTaken        []int    `json:"challengeSlotsTaken"`
 	HasPassed                  []string `json:"hasPassed"`
+	// StealWindowOpen is true while other players may still press Steal.
+	StealWindowOpen bool `json:"stealWindowOpen"`
+	// StealClaims lists players who pressed Steal; StealsPlaced those of them
+	// who have placed (the slot itself stays hidden until the reveal).
+	StealClaims  []string `json:"stealClaims"`
+	StealsPlaced []string `json:"stealsPlaced"`
 }
 
 // StatePayload is the full per-recipient game state snapshot (§13.3).
@@ -103,6 +109,18 @@ func (mg *ManagedGame) buildState(forPlayerID string) StatePayload {
 			ActivePlacementSubmitted: g.Turn.PlacementSubmitted,
 			ChallengeSlotsTaken:      make([]int, 0),
 			HasPassed:                make([]string, 0),
+			StealWindowOpen:          g.Phase == game.PhaseChallenging && !g.Turn.StealWindowClosed,
+			StealClaims:              make([]string, 0),
+			StealsPlaced:             make([]string, 0),
+		}
+		for _, playerID := range g.Turn.Order {
+			if !g.Turn.StealClaims[playerID] {
+				continue
+			}
+			ct.StealClaims = append(ct.StealClaims, playerID)
+			if _, placed := g.Turn.Challenges[playerID]; placed {
+				ct.StealsPlaced = append(ct.StealsPlaced, playerID)
+			}
 		}
 		if g.Turn.PlacementSubmitted {
 			slot := g.Turn.PlacementSlot

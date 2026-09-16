@@ -28,6 +28,9 @@ export interface CurrentTurnView {
   activePlacementPreviewSlot: number | null;
   challengeSlotsTaken: number[];
   hasPassed: string[];
+  stealWindowOpen: boolean;
+  stealClaims: string[];
+  stealsPlaced: string[];
 }
 
 export interface StatePayload {

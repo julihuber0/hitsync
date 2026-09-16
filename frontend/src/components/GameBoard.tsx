@@ -23,7 +23,6 @@ export default function GameBoard() {
 
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [challengeSlot, setChallengeSlot] = useState<number | null>(null);
-  const [stealMode, setStealMode] = useState(false);
   const [titleGuess, setTitleGuess] = useState<string | null>(null);
   const [artistGuess, setArtistGuess] = useState<string | null>(null);
 
@@ -35,18 +34,23 @@ export default function GameBoard() {
   useEffect(() => {
     setSelectedSlot(null);
     setChallengeSlot(null);
-    setStealMode(false);
     setTitleGuess(null);
     setArtistGuess(null);
   }, [trackPrepare?.prepareId]);
 
   const inPlacing = state.phase === "PLACING";
   const inChallenging = state.phase === "CHALLENGING";
-  const youChallenged = you?.pendingChallengeSlot != null;
-  const youPassed = state.currentTurn?.hasPassed?.includes(state.youId) ?? false;
-  const alreadyActed = youChallenged || youPassed;
-  const canSteal = inChallenging && !isActive && (you?.tokens ?? 0) > 0 && !alreadyActed;
-  const selectingSteal = canSteal && stealMode;
+  const turn = state.currentTurn;
+  const stealWindowOpen = inChallenging && (turn?.stealWindowOpen ?? false);
+  const youClaimed = turn?.stealClaims.includes(state.youId) ?? false;
+  const youPassed = turn?.hasPassed.includes(state.youId) ?? false;
+  // Pressing Steal is only possible during the window; placing the claimed
+  // steal afterwards has no time limit.
+  const canClaimSteal = stealWindowOpen && !isActive && (you?.tokens ?? 0) > 0 && !youClaimed && !youPassed;
+  const selectingSteal = inChallenging && youClaimed && !(turn?.stealsPlaced.includes(state.youId) ?? false);
+  const pendingStealers = inChallenging && turn
+    ? state.players.filter((p) => p.id !== state.youId && turn.stealClaims.includes(p.id) && !turn.stealsPlaced.includes(p.id))
+    : [];
   const otherPlayers = state.players.filter((player) => player.id !== state.youId);
   const previews = state.players.flatMap((player) => player.pendingChallengePreviewSlot == null
     ? []
@@ -60,7 +64,6 @@ export default function GameBoard() {
   const confirmChallenge = () => {
     if (challengeSlot === null) return;
     socket?.challenge(challengeSlot);
-    setStealMode(false);
   };
 
   const selectChallengeSlot = (slot: number) => {
@@ -166,44 +169,46 @@ export default function GameBoard() {
           )}
         </section>
 
-        {inChallenging && !isActive && (
+        {canClaimSteal && (
           <div className="flex flex-wrap items-center justify-center gap-3 animate-fade-in">
-            {!alreadyActed && (
-              <CountdownRing
-                deadlineMs={state.phaseEndsAtServerMs}
-                totalMs={CHALLENGE_WINDOW_MS}
-                serverNow={() => socket?.clock.serverNow() ?? Date.now()}
-                size={32}
-              />
-            )}
-            {canSteal && !stealMode && (
-              <button
-                onClick={() => setStealMode(true)}
-                className="bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-2 px-6 rounded-lg text-sm"
-              >
-                {t("board.steal")}
-              </button>
-            )}
-            {selectingSteal && (
-              <>
-                <p className="w-full text-center text-sm text-neon/65">{t("board.stealing", { name: activePlayer?.name ?? "" })}</p>
-                <button
-                  onClick={confirmChallenge}
-                  disabled={challengeSlot === null}
-                  className="bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-2 px-6 rounded-lg disabled:opacity-40 disabled:hover:shadow-none text-sm"
-                >
-                  {t("board.submitSteal")}
-                </button>
-              </>
-            )}
+            <CountdownRing
+              deadlineMs={state.phaseEndsAtServerMs}
+              totalMs={CHALLENGE_WINDOW_MS}
+              serverNow={() => socket?.clock.serverNow() ?? Date.now()}
+              size={32}
+            />
             <button
-              onClick={() => { setStealMode(false); socket?.passChallenge(); }}
-              disabled={alreadyActed}
-              className="bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan active:scale-[0.97] transition-all duration-200 py-2 px-6 rounded-lg text-sm disabled:opacity-40 disabled:hover:shadow-none"
+              onClick={() => socket?.claimSteal()}
+              className="bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-2 px-6 rounded-lg text-sm"
+            >
+              {t("board.steal")}
+            </button>
+            <button
+              onClick={() => socket?.passChallenge()}
+              className="bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan active:scale-[0.97] transition-all duration-200 py-2 px-6 rounded-lg text-sm"
             >
               {t("board.pass")}
             </button>
           </div>
+        )}
+
+        {selectingSteal && (
+          <div className="flex flex-wrap items-center justify-center gap-3 animate-fade-in">
+            <p className="w-full text-center text-sm text-neon/65">{t("board.stealing", { name: activePlayer?.name ?? "" })}</p>
+            <button
+              onClick={confirmChallenge}
+              disabled={challengeSlot === null}
+              className="bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-2 px-6 rounded-lg disabled:opacity-40 disabled:hover:shadow-none text-sm"
+            >
+              {t("board.submitSteal")}
+            </button>
+          </div>
+        )}
+
+        {pendingStealers.length > 0 && !stealWindowOpen && (
+          <p role="status" className="text-center text-sm text-neon/65 animate-fade-in">
+            {t("board.waitingForStealers", { names: pendingStealers.map((p) => p.name).join(", ") })}
+          </p>
         )}
 
         {autoplayBlocked && (
