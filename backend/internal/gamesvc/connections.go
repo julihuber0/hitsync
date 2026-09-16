@@ -16,6 +16,7 @@ func (mg *ManagedGame) registerConn(playerID string, c *ws.Conn) bool {
 	}
 	p.Connected = true
 	mg.conns[playerID] = c
+	mg.emptySince = time.Time{}
 
 	if t, ok := mg.reconnectTimers[playerID]; ok {
 		t.Stop()
@@ -37,6 +38,9 @@ func (mg *ManagedGame) unregisterConn(playerID string, c *ws.Conn) {
 		return
 	}
 	delete(mg.conns, playerID)
+	if len(mg.conns) == 0 {
+		mg.emptySince = time.Now()
+	}
 
 	p := mg.g.Player(playerID)
 	if p == nil {
@@ -59,11 +63,14 @@ func (mg *ManagedGame) onReconnectGraceExpired(playerID string) {
 
 	wasActive := mg.g.Turn != nil && mg.g.Turn.ActivePlayerID == playerID
 	ended := mg.g.RemovePlayer(playerID, mg.cfg.MinPlayers)
+	if mg.forgetIfEmpty() {
+		return
+	}
 	if ended {
 		mg.clearPhaseTimeout()
 		mg.stopTrack()
 		mg.broadcastState()
-		mg.persistOnGameOver()
+		mg.deleteSnapshotAsync()
 		return
 	}
 	if wasActive {

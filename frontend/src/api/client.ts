@@ -72,6 +72,9 @@ export const api = {
     request<PlayerIdentity>("/api/games", { method: "POST", body: JSON.stringify({ displayName, settings }) }),
   joinGame: (inviteCode: string, displayName: string) =>
     request<PlayerIdentity>("/api/games/join", { method: "POST", body: JSON.stringify({ inviteCode, displayName }) }),
+  /** Which of these player tokens' games can still be rejoined. */
+  resumableGames: (playerTokens: string[]) =>
+    request<{ gameIds: string[] }>("/api/games/resumable", { method: "POST", body: JSON.stringify({ playerTokens }) }),
   preview: (inviteCode: string) => request<GamePreview>(`/api/games/${encodeURIComponent(inviteCode)}/preview`),
 
   adminLogin: (password: string) => request<{ ok: boolean }>("/api/admin/login", { method: "POST", body: JSON.stringify({ password }) }),

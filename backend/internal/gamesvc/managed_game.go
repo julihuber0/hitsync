@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/julianhuber/hitsync/backend/internal/game"
-	"github.com/julianhuber/hitsync/backend/internal/store"
 	"github.com/julianhuber/hitsync/backend/internal/tokens"
 	"github.com/julianhuber/hitsync/backend/internal/ws"
 )
@@ -44,19 +43,22 @@ type ManagedGame struct {
 	pendingWinnerID   string // captured winner while a game-ending reveal is still showing (§8.9)
 
 	createdAt time.Time
-	startedAt time.Time
-	turnCount int
+	// emptySince is when the game last had no connected socket; zero while
+	// anyone is connected. The janitor forgets games that stay empty for
+	// longer than the reconnect grace.
+	emptySince time.Time
 
 	trackSource *TrackSource
 	mediaSigner *tokens.MediaSigner
 	trackWarmer TrackWarmer
-	store       *store.Store
+	store       SnapshotStore
 	log         *slog.Logger
 	cfg         Config
 	manager     *Manager
 }
 
-func newManagedGame(id, inviteCode string, settings game.Settings, ts *TrackSource, signer *tokens.MediaSigner, warmer TrackWarmer, st *store.Store, cfg Config, log *slog.Logger, mgr *Manager) *ManagedGame {
+func newManagedGame(id, inviteCode string, settings game.Settings, ts *TrackSource, signer *tokens.MediaSigner, warmer TrackWarmer, st SnapshotStore, cfg Config, log *slog.Logger, mgr *Manager) *ManagedGame {
+	now := time.Now()
 	mg := &ManagedGame{
 		id:              id,
 		inviteCode:      inviteCode,
@@ -66,7 +68,8 @@ func newManagedGame(id, inviteCode string, settings game.Settings, ts *TrackSour
 		conns:           map[string]*ws.Conn{},
 		reconnectTimers: map[string]*time.Timer{},
 		pendingReady:    map[string]bool{},
-		createdAt:       time.Now(),
+		createdAt:       now,
+		emptySince:      now, // nobody has connected yet
 		trackSource:     ts,
 		mediaSigner:     signer,
 		trackWarmer:     warmer,
@@ -99,18 +102,49 @@ func (mg *ManagedGame) enqueue(fn func()) {
 	}
 }
 
-// call runs fn on the game's goroutine and blocks until it completes.
+// call runs fn on the game's goroutine and blocks until it completes. If the
+// game has stopped, fn may not run at all and call returns anyway.
 func (mg *ManagedGame) call(fn func()) {
 	done := make(chan struct{})
 	mg.enqueue(func() {
 		fn()
 		close(done)
 	})
-	<-done
+	select {
+	case <-done:
+	case <-mg.stopCh:
+	}
 }
 
+// stop ends the game's goroutine and its timers. Only Manager.removeGame
+// calls it, exactly once.
 func (mg *ManagedGame) stop() {
 	close(mg.stopCh)
+	if mg.phaseTimer != nil {
+		mg.phaseTimer.Stop()
+	}
+	for _, t := range mg.reconnectTimers {
+		t.Stop()
+	}
+}
+
+// forget removes the game from the server entirely: from memory and its
+// crash-recovery snapshot. Nobody can rejoin it afterwards. Must run on the
+// game's goroutine.
+func (mg *ManagedGame) forget(reason string) {
+	mg.log.Info("forgetting game", "game_id", mg.id, "reason", reason)
+	mg.deleteSnapshotAsync()
+	mg.manager.removeGame(mg.id, mg.inviteCode)
+}
+
+// forgetIfEmpty forgets the game once its last player is gone. Reports
+// whether it did.
+func (mg *ManagedGame) forgetIfEmpty() bool {
+	if len(mg.g.Players) > 0 {
+		return false
+	}
+	mg.forget("all players left")
+	return true
 }
 
 // broadcastState sends a freshly-rendered, per-recipient state snapshot to

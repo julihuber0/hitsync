@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/julianhuber/hitsync/backend/internal/game"
-	"github.com/julianhuber/hitsync/backend/internal/store"
 	"github.com/julianhuber/hitsync/backend/internal/tokens"
 	"github.com/julianhuber/hitsync/backend/internal/ws"
 )
@@ -37,7 +36,7 @@ type Manager struct {
 	byInvite map[string]string
 
 	cfg         Config
-	st          *store.Store
+	st          SnapshotStore
 	trackSource *TrackSource
 	mediaSigner *tokens.MediaSigner
 	trackWarmer TrackWarmer
@@ -48,7 +47,7 @@ type Manager struct {
 }
 
 // NewManager creates a Manager.
-func NewManager(cfg Config, st *store.Store, ts *TrackSource, mediaSigner *tokens.MediaSigner, warmer TrackWarmer, issuer *tokens.Issuer, log *slog.Logger) *Manager {
+func NewManager(cfg Config, st SnapshotStore, ts *TrackSource, mediaSigner *tokens.MediaSigner, warmer TrackWarmer, issuer *tokens.Issuer, log *slog.Logger) *Manager {
 	return &Manager{
 		games:       map[string]*ManagedGame{},
 		byInvite:    map[string]string{},
@@ -197,14 +196,47 @@ func (m *Manager) Preview(inviteCode string) PreviewResult {
 	return result
 }
 
+// removeGame drops a game from memory and stops it. Idempotent. Safe to call
+// from the game's own goroutine (see ManagedGame.forget).
 func (m *Manager) removeGame(gameID, inviteCode string) {
 	m.mu.Lock()
-	if mg, ok := m.games[gameID]; ok {
-		mg.stop()
+	defer m.mu.Unlock()
+	mg, ok := m.games[gameID]
+	if !ok {
+		return
 	}
+	mg.stop()
 	delete(m.games, gameID)
-	delete(m.byInvite, inviteCode)
-	m.mu.Unlock()
+	if m.byInvite[inviteCode] == gameID {
+		delete(m.byInvite, inviteCode)
+	}
+}
+
+// ResumableGames returns the ids of the games that the given player tokens
+// can still rejoin: the game still exists, the player is still part of it,
+// and it has not finished. Invalid or expired tokens are skipped.
+func (m *Manager) ResumableGames(playerTokens []string) []string {
+	ids := []string{}
+	seen := map[string]bool{}
+	for _, token := range playerTokens {
+		claims, err := m.issuer.VerifyPlayer(token)
+		if err != nil || seen[claims.GameID] {
+			continue
+		}
+		mg := m.gameByID(claims.GameID)
+		if mg == nil {
+			continue
+		}
+		var resumable bool
+		mg.call(func() {
+			resumable = mg.g.Phase != game.PhaseGameOver && mg.g.Player(claims.PlayerID) != nil
+		})
+		if resumable {
+			seen[claims.GameID] = true
+			ids = append(ids, claims.GameID)
+		}
+	}
+	return ids
 }
 
 func (m *Manager) gameByID(gameID string) *ManagedGame {
@@ -306,9 +338,8 @@ func (m *Manager) ForceEndGame(gameID string) error {
 		mg.clearPhaseTimeout()
 		mg.stopTrack()
 		mg.broadcastState()
-		mg.persistOnGameOver()
+		mg.forget("ended by admin")
 	})
-	m.removeGame(gameID, mg.inviteCode)
 	return nil
 }
 
@@ -337,21 +368,28 @@ func (m *Manager) reapOnce() {
 	m.mu.RUnlock()
 
 	for _, mg := range games {
-		var shouldRemove bool
 		mg.call(func() {
-			idleTooLong := mg.g.Phase == game.PhaseLobby && time.Since(mg.createdAt) > m.cfg.LobbyIdleTimeout
-			noConnections := len(mg.conns) == 0 && time.Since(mg.createdAt) > m.cfg.PlayerReconnectGrace
-			if idleTooLong || noConnections {
-				if mg.g.Phase != game.PhaseGameOver {
-					mg.g.Phase = game.PhaseGameOver
-					mg.persistOnGameOver()
-				}
-				shouldRemove = true
+			switch {
+			case len(mg.conns) == 0 && !mg.emptySince.IsZero() && time.Since(mg.emptySince) > m.cfg.PlayerReconnectGrace:
+				mg.forget("nobody connected")
+			case mg.g.Phase == game.PhaseLobby && time.Since(mg.createdAt) > m.cfg.LobbyIdleTimeout:
+				mg.forget("lobby idle")
 			}
 		})
-		if shouldRemove {
-			m.removeGame(mg.id, mg.inviteCode)
-		}
+	}
+
+	// A snapshot write can land after its game was forgotten; drop such
+	// orphans so nothing outlives the game.
+	m.mu.RLock()
+	keep := make([]string, 0, len(m.games))
+	for id := range m.games {
+		keep = append(keep, id)
+	}
+	m.mu.RUnlock()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := m.st.DeleteSnapshotsExcept(ctx, keep); err != nil {
+		m.log.Warn("failed to delete orphaned game snapshots", "error", err)
 	}
 }
 

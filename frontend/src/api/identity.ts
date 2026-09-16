@@ -39,3 +39,22 @@ export function loadRecentGames(): RecentGame[] {
     return [];
   }
 }
+
+/** Stored games that still have a player token, most recent first. */
+export function loadStoredGames(): Array<RecentGame & { playerToken: string }> {
+  return loadRecentGames().flatMap((g) => {
+    const playerToken = loadPlayerToken(g.gameId);
+    return playerToken ? [{ ...g, playerToken }] : [];
+  });
+}
+
+/** Forgets a game this browser can no longer rejoin. */
+export function forgetGame(gameId: string): void {
+  try {
+    localStorage.removeItem(playerTokenKey(gameId));
+    const recent = loadRecentGames().filter((g) => g.gameId !== gameId);
+    localStorage.setItem(RECENT_GAMES_KEY, JSON.stringify(recent));
+  } catch {
+    // localStorage unavailable — nothing to forget.
+  }
+}

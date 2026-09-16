@@ -56,29 +56,12 @@ func (s *Store) RecentSnapshots(ctx context.Context, maxAge time.Duration) ([]Ga
 	return out, rows.Err()
 }
 
-// GameResult mirrors a row of the game_results table.
-type GameResult struct {
-	GameID      string
-	StartedAt   time.Time
-	EndedAt     time.Time
-	PlayerCount int
-	WinnerName  string
-	TurnsPlayed int
-}
-
-// SaveGameResult records a finished game for the admin stats page.
-func (s *Store) SaveGameResult(ctx context.Context, r GameResult) error {
-	_, err := s.Pool.Exec(ctx, `
-		INSERT INTO game_results (game_id, started_at, ended_at, player_count, winner_name, turns_played)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (game_id) DO NOTHING
-	`, r.GameID, r.StartedAt, r.EndedAt, r.PlayerCount, nullableString(r.WinnerName), r.TurnsPlayed)
-	return err
-}
-
-func nullableString(s string) any {
-	if s == "" {
-		return nil
+// DeleteSnapshotsExcept removes every snapshot whose game is not in keepIDs,
+// i.e. games the server has already forgotten.
+func (s *Store) DeleteSnapshotsExcept(ctx context.Context, keepIDs []string) error {
+	if keepIDs == nil {
+		keepIDs = []string{}
 	}
-	return s
+	_, err := s.Pool.Exec(ctx, `DELETE FROM game_snapshots WHERE game_id <> ALL($1::text[])`, keepIDs)
+	return err
 }

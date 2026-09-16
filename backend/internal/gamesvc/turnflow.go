@@ -22,7 +22,6 @@ func (mg *ManagedGame) startGameFlow(hostID string) error {
 	if err := mg.g.StartGame(mg.cfg.MinPlayers); err != nil {
 		return err
 	}
-	mg.startedAt = time.Now()
 
 	for _, p := range mg.g.Players {
 		cand, err := mg.trackSource.Draw(mg.excludedTrackIDs())
@@ -47,7 +46,6 @@ func (mg *ManagedGame) beginNextTurn(advance bool) {
 			return
 		}
 	}
-	mg.turnCount++
 
 	cand, err := mg.takeCandidate()
 	if err != nil {
@@ -55,7 +53,7 @@ func (mg *ManagedGame) beginNextTurn(advance bool) {
 		_ = mg.g.EndGame(mg.g.HostID)
 		mg.clearPhaseTimeout()
 		mg.broadcastState()
-		mg.persistOnGameOver()
+		mg.deleteSnapshotAsync()
 		return
 	}
 	card := cand.Card
@@ -317,7 +315,7 @@ func (mg *ManagedGame) finalizeGameOver() {
 	mg.g.WinnerID = mg.pendingWinnerID
 	mg.clearPhaseTimeout()
 	mg.broadcastState()
-	mg.persistOnGameOver()
+	mg.deleteSnapshotAsync()
 }
 
 func (mg *ManagedGame) onRevealTimeout() {
@@ -352,11 +350,14 @@ func (mg *ManagedGame) handleKickPlayer(hostID, targetID string) {
 		return
 	}
 	mg.dropConn(targetID, "kicked")
+	if mg.forgetIfEmpty() {
+		return
+	}
 	if ended {
 		mg.clearPhaseTimeout()
 		mg.stopTrack()
 		mg.broadcastState()
-		mg.persistOnGameOver()
+		mg.deleteSnapshotAsync()
 		return
 	}
 	if wasActive {
@@ -385,7 +386,7 @@ func (mg *ManagedGame) handleEndGame(hostID string) {
 	mg.clearPhaseTimeout()
 	mg.stopTrack()
 	mg.broadcastState()
-	mg.persistOnGameOver()
+	mg.deleteSnapshotAsync()
 }
 
 func (mg *ManagedGame) handlePlayAgain(hostID string) {
@@ -393,7 +394,6 @@ func (mg *ManagedGame) handlePlayAgain(hostID string) {
 		return
 	}
 	mg.upcoming = nil
-	mg.turnCount = 0
 	mg.broadcastState()
 }
 
@@ -493,4 +493,7 @@ func (mg *ManagedGame) dropConn(playerID, reason string) {
 		c.Close(reason)
 	}
 	delete(mg.conns, playerID)
+	if len(mg.conns) == 0 && mg.emptySince.IsZero() {
+		mg.emptySince = time.Now()
+	}
 }

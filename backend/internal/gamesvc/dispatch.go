@@ -91,11 +91,14 @@ func dispatchMessage(mg *ManagedGame, c *ws.Conn, env ws.Envelope) {
 		wasActive := mg.g.Turn != nil && mg.g.Turn.ActivePlayerID == c.PlayerID
 		ended := mg.g.RemovePlayer(c.PlayerID, mg.cfg.MinPlayers)
 		mg.dropConn(c.PlayerID, "left")
+		if mg.forgetIfEmpty() {
+			return
+		}
 		switch {
 		case ended:
 			mg.clearPhaseTimeout()
 			mg.stopTrack()
-			mg.persistOnGameOver()
+			mg.deleteSnapshotAsync()
 			mg.broadcastState()
 		case wasActive:
 			mg.clearPhaseTimeout()

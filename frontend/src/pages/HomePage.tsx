@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { api, ApiError } from "../api/client";
-import { saveIdentity, loadRecentGames, loadPlayerToken } from "../api/identity";
+import { saveIdentity, loadStoredGames, forgetGame, type RecentGame } from "../api/identity";
 import { useAppStore } from "../store/appStore";
 import { ArrowRight, LogOut, Plus, Users } from "lucide-react";
 import LanguageToggle from "../components/LanguageToggle";
@@ -20,7 +20,29 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const recentGames = loadRecentGames().filter((g) => loadPlayerToken(g.gameId));
+  // Only games that can still be rejoined: the server confirms each one still
+  // exists, still has this player, and hasn't finished. Everything else is
+  // dropped from this browser.
+  const [recentGames, setRecentGames] = useState<RecentGame[]>([]);
+  useEffect(() => {
+    const stored = loadStoredGames();
+    if (stored.length === 0) return;
+    let cancelled = false;
+    api
+      .resumableGames(stored.map((g) => g.playerToken))
+      .then(({ gameIds }) => {
+        const resumable = new Set(gameIds);
+        for (const g of stored) {
+          if (!resumable.has(g.gameId)) forgetGame(g.gameId);
+        }
+        if (!cancelled) setRecentGames(stored.filter((g) => resumable.has(g.gameId)));
+      })
+      // If the server can't be asked, show nothing and keep the stored games.
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleError = (e: unknown) => {
     if (e instanceof ApiError) {

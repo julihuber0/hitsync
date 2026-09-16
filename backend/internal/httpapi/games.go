@@ -114,6 +114,26 @@ func (a *API) handleJoinGame(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, identityResponse(id))
 }
 
+type resumableGamesRequest struct {
+	PlayerTokens []string `json:"playerTokens"`
+}
+
+// maxResumableTokens bounds one resumable-games request.
+const maxResumableTokens = 20
+
+// handleResumableGames implements POST /api/games/resumable: given the player
+// tokens a browser has stored, it returns the ids of the games that can still
+// be rejoined (the game exists, the player is still in it, and it has not
+// finished), so the home page can offer exactly those.
+func (a *API) handleResumableGames(w http.ResponseWriter, r *http.Request) {
+	var req resumableGamesRequest
+	if err := decodeJSON(r, &req); err != nil || len(req.PlayerTokens) > maxResumableTokens {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Malformed request body.")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"gameIds": a.manager.ResumableGames(req.PlayerTokens)})
+}
+
 // handlePreview implements GET /api/games/{inviteCode}/preview (§12.2).
 func (a *API) handlePreview(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "inviteCode")

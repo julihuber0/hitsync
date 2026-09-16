@@ -29,6 +29,7 @@ func (a *API) Router() http.Handler {
 		r.Route("/games", func(r chi.Router) {
 			r.Post("/", a.requireAppScope(a.handleCreateGame))
 			r.Post("/join", a.requireAppScope(a.handleJoinGame))
+			r.Post("/resumable", a.requireAppScope(a.handleResumableGames))
 			r.Get("/{inviteCode}/preview", a.requireAppScope(a.handlePreview))
 		})
 

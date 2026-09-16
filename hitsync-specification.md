@@ -152,6 +152,27 @@ sync once it is done. Placement and challenge
 timeouts, scoring, reconnect grace, snapshotting, and all game rules are
 unchanged.
 
+## Game lifetime and rejoining
+
+Games live only in the backend's memory, plus a crash-recovery snapshot in
+Postgres while they are running.
+
+- A player whose connection drops stays in the game for
+  `PLAYER_RECONNECT_GRACE` (default 120 s). Reopening the game, from the
+  browser's history or from the home page's recent games, reconnects them with
+  their timeline and tokens intact. After the grace period they are removed.
+- The home page asks `POST /api/games/resumable` which of the games stored in
+  the browser can still be rejoined: the game exists, the player is still in
+  it, and it has not finished. Only those are shown; the rest are deleted from
+  the browser.
+- A game is forgotten as soon as its last player is removed, and at the latest
+  once nobody has been connected for longer than the grace period (checked
+  every minute), or when a lobby stays idle past `LOBBY_IDLE_TIMEOUT`.
+  Forgetting releases the invite code and deletes the snapshot.
+- Finished games are not snapshotted and no game history is stored. After a
+  restart, games are restored from snapshots younger than 30 minutes with
+  every player disconnected and the usual grace period.
+
 ## Operational constraints
 
 - Transcoded cache size is controlled with `MEDIA_CACHE_MAX_BYTES`.
