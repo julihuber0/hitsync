@@ -75,17 +75,17 @@ func (g *Game) checkWinCondition() {
 	}
 }
 
-// ApplySongGuessReward grants +1 token (capped at MaxTokens) to the active
-// player when both the title and artist guesses were correct (§8.6). Call
-// during Resolve's turn, before or after Resolve itself.
+// ApplySongGuessReward grants +1 token to the active player when every
+// selected guess field was correct (§8.6). SongGuessAwarded reports whether a
+// token was actually added: a correct guess by a player already holding
+// maxTokens earns nothing. Call during Resolve's turn, before or after
+// Resolve itself.
 func (r *Reveal) ApplySongGuessReward(player *Player, maxTokens int, allCorrect bool) {
 	r.SongGuessCorrect = allCorrect
-	if !allCorrect {
+	if !allCorrect || player.Tokens >= maxTokens {
 		return
 	}
-	if player.Tokens < maxTokens {
-		player.Tokens++
-		r.TokenChanges[player.ID] = r.TokenChanges[player.ID] + 1
-	}
+	player.Tokens++
+	r.TokenChanges[player.ID] = r.TokenChanges[player.ID] + 1
 	r.SongGuessAwarded = true
 }

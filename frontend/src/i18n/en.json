@@ -125,7 +125,8 @@
     "songGuessCorrect": "Bonus token earned!",
     "continuing": "Next turn starting…",
     "songGuessBy": "{{name}}'s guess",
-    "songGuessAtMax": "Correct, but already at the token limit",
+    "songGuessAtMax_one": "All correct, but {{name}} already has the maximum of {{count}} token — no bonus",
+    "songGuessAtMax_other": "All correct, but {{name}} already has the maximum of {{count}} tokens — no bonus",
     "songGuessWrong": "Not quite — no token",
     "album": "Album"
   },

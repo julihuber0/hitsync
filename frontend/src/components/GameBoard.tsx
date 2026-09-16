@@ -284,7 +284,7 @@ export default function GameBoard() {
         </div>
       </aside>
 
-      {state.phase === "REVEALING" && lastReveal && <RevealOverlay reveal={lastReveal} players={state.players} guessFields={guessFields} />}
+      {state.phase === "REVEALING" && lastReveal && <RevealOverlay reveal={lastReveal} players={state.players} guessFields={guessFields} maxTokens={state.settings.maxTokens} />}
     </div>
   );
 }

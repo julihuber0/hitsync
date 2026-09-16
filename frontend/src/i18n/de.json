@@ -125,7 +125,8 @@
     "songGuessCorrect": "Bonus-Token verdient!",
     "continuing": "Nächste Runde startet…",
     "songGuessBy": "Tipp von {{name}}",
-    "songGuessAtMax": "Richtig, aber das Token-Limit ist schon erreicht",
+    "songGuessAtMax_one": "Alles richtig, aber {{name}} hat schon das Maximum von {{count}} Token – kein Bonus",
+    "songGuessAtMax_other": "Alles richtig, aber {{name}} hat schon das Maximum von {{count}} Tokens – kein Bonus",
     "songGuessWrong": "Leider nicht ganz — kein Token",
     "album": "Album"
   },

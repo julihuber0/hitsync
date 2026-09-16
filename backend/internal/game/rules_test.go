@@ -708,3 +708,31 @@ func TestUpdateSettingsTokens(t *testing.T) {
 		t.Errorf("rejected updates changed settings: %+v", g.Settings)
 	}
 }
+
+func TestSongGuessReward(t *testing.T) {
+	cases := []struct {
+		name        string
+		tokens      int
+		allCorrect  bool
+		wantTokens  int
+		wantAwarded bool
+	}{
+		{"correct below the limit earns a token", 2, true, 3, true},
+		{"correct at the limit earns nothing", 5, true, 5, false},
+		{"wrong earns nothing", 2, false, 2, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			player := &Player{ID: "p1", Tokens: c.tokens}
+			reveal := &Reveal{TokenChanges: map[string]int{}}
+			reveal.ApplySongGuessReward(player, 5, c.allCorrect)
+			if player.Tokens != c.wantTokens || reveal.SongGuessAwarded != c.wantAwarded || reveal.SongGuessCorrect != c.allCorrect {
+				t.Errorf("tokens=%d awarded=%v correct=%v; want tokens=%d awarded=%v correct=%v",
+					player.Tokens, reveal.SongGuessAwarded, reveal.SongGuessCorrect, c.wantTokens, c.wantAwarded, c.allCorrect)
+			}
+			if wantChange := c.wantTokens - c.tokens; reveal.TokenChanges["p1"] != wantChange {
+				t.Errorf("token change = %d, want %d", reveal.TokenChanges["p1"], wantChange)
+			}
+		})
+	}
+}

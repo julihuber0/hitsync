@@ -18,10 +18,12 @@ export default function RevealOverlay({
   reveal,
   players,
   guessFields,
+  maxTokens,
 }: {
   reveal: RevealPayload;
   players: PlayerView[];
   guessFields: GuessFields;
+  maxTokens: number;
 }) {
   const { t } = useTranslation();
   const winner = players.find((p) => p.id === reveal.winnerPlayerId);
@@ -81,6 +83,7 @@ export default function RevealOverlay({
             <SongGuessResult
               result={reveal.songGuessResult}
               fields={guessFields}
+              maxTokens={maxTokens}
               playerName={players.find((p) => p.id === reveal.activePlayerId)?.name ?? ""}
             />
           )}
@@ -98,17 +101,19 @@ export default function RevealOverlay({
 function SongGuessResult({
   result,
   fields,
+  maxTokens,
   playerName,
 }: {
   result: NonNullable<RevealPayload["songGuessResult"]>;
   fields: GuessFields;
+  maxTokens: number;
   playerName: string;
 }) {
   const { t } = useTranslation();
   const outcome = result.awarded
     ? { text: t("reveal.songGuessCorrect"), className: "text-gold" }
     : result.correct
-      ? { text: t("reveal.songGuessAtMax"), className: "text-fg/60" }
+      ? { text: t("reveal.songGuessAtMax", { name: playerName, count: maxTokens }), className: "text-fg/60" }
       : { text: t("reveal.songGuessWrong"), className: "text-fg/45" };
 
   return (
