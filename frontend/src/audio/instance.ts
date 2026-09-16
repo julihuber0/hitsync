@@ -1,4 +1,4 @@
-import { LiveAudioPlayer } from "./player";
+import { SyncedAudioPlayer } from "./player";
 
-// A single LiveKit subscription per tab — there is only ever one active turn.
-export const audioPlayer = new LiveAudioPlayer();
+// A single player per tab — there is only ever one active turn.
+export const audioPlayer = new SyncedAudioPlayer();

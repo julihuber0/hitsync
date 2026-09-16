@@ -1,6 +1,6 @@
 # Local development support services only — NOT used in production.
 # See docs/local-development.md. Runs Postgres (and optionally a throwaway
-# Navidrome) on host ports so backend/media/frontend can run natively with
+# Navidrome) on host ports so the backend and frontend can run natively with
 # hot reload, outside Docker, against them.
 #
 # Usage:
@@ -14,17 +14,6 @@ volumes:
   navidrome-dev-data:
 
 services:
-  livekit:
-    image: livekit/livekit-server:v1.13
-    # Docker's bridge address and public/STUN address are not reachable by a
-    # browser running on this same machine. Advertise the host loopback
-    # address instead, and pin WebRTC to the UDP port that we publish below.
-    command: --dev --bind 0.0.0.0 --node-ip 127.0.0.1 --udp-port 50000
-    ports:
-      - "7880:7880"
-      - "7881:7881"
-      - "50000-50020:50000-50020/udp"
-
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped

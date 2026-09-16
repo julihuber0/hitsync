@@ -51,21 +51,26 @@ export interface GuessOptions {
   artists: string[];
 }
 
+export interface TrackPreloadPayload {
+  trackId: string;
+  mediaUrl: string;
+}
+
 export interface TrackPreparePayload {
   prepareId: string;
   trackId: string;
-  livekitUrl: string;
-  livekitToken: string;
-  roomName: string;
+  mediaUrl: string;
   durationMs: number;
   guessOptions?: GuessOptions;
 }
 
 export interface TrackStartPayload {
   prepareId: string;
+  startAtServerMs: number;
 }
 
 export interface TrackStopPayload {
+  prepareId: string;
   fadeMs: number;
 }
 

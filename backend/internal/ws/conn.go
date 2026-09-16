@@ -112,7 +112,21 @@ func (c *Conn) readPump(ctx context.Context, handler Handler) {
 			c.closeWithReason(ctx, "rate_limited")
 			return
 		}
+		if env.Type == TypePing {
+			c.answerPing(env)
+			continue
+		}
 		handler.OnMessage(c, env)
+	}
+}
+
+// answerPing replies to a clock-sync probe straight from the read loop.
+// Routing it through the game's command queue would add queueing delay to
+// the measured round trip and skew the client's clock offset.
+func (c *Conn) answerPing(env Envelope) {
+	var p PingPayload
+	if json.Unmarshal(env.Payload, &p) == nil {
+		c.Send(TypePong, PongPayload{C0: p.C0, S: time.Now().UnixMilli()})
 	}
 }
 

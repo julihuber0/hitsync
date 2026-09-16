@@ -9,16 +9,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/julianhuber/hitsync/backend/internal/broadcast"
 	"github.com/julianhuber/hitsync/backend/internal/config"
 	"github.com/julianhuber/hitsync/backend/internal/gamesvc"
 	"github.com/julianhuber/hitsync/backend/internal/httpapi"
 	"github.com/julianhuber/hitsync/backend/internal/library"
-	"github.com/julianhuber/hitsync/backend/internal/livekit"
+	"github.com/julianhuber/hitsync/backend/internal/media"
 	"github.com/julianhuber/hitsync/backend/internal/musicbrainz"
 	"github.com/julianhuber/hitsync/backend/internal/navidrome"
 	"github.com/julianhuber/hitsync/backend/internal/store"
@@ -69,10 +69,25 @@ func main() {
 
 	trackSource := gamesvc.NewTrackSource(st, resolver, syncer, cfg.TrackMinDuration, cfg.TrackMaxDuration, cfg.YearMaxBackdate)
 
+	// Files are keyed by output format so a changed AUDIO_BITRATE (or files
+	// left by an older deployment) are never served in place of fresh ones.
+	mediaCacheDir := filepath.Join(cfg.MediaCacheDir, fmt.Sprintf("mp3-%dk", cfg.AudioBitrate))
+	mediaCache, err := media.NewCache(mediaCacheDir, cfg.MediaCacheMaxBytes)
+	if err != nil {
+		log.Error("failed to initialise media cache", "error", err)
+		os.Exit(1)
+	}
+	transcoder := media.NewTranscoder(media.TranscoderConfig{
+		Cache:         mediaCache,
+		SourceURL:     nav.RawStreamURL,
+		FFmpegPath:    cfg.FFmpegPath,
+		BitrateKbps:   cfg.AudioBitrate,
+		MaxConcurrent: 2,
+		Timeout:       3 * time.Minute,
+	}, log)
+
 	issuer := tokens.NewIssuer(cfg.JWTSecret)
-	mediaSigner := tokens.NewMediaSigner(cfg.MediaSharedSecret)
-	broadcaster := broadcast.New(cfg.MediaInternalURL)
-	livekitTokens := livekit.NewTokenIssuer(cfg.LiveKitAPIKey, cfg.LiveKitAPISecret, 2*time.Hour)
+	mediaSigner := tokens.NewMediaSigner(cfg.JWTSecret)
 
 	gsCfg := gamesvc.Config{
 		MinPlayers: cfg.MinPlayers, MaxPlayers: cfg.MaxPlayers, MaxConcurrentGames: cfg.MaxConcurrentGames,
@@ -84,13 +99,13 @@ func main() {
 		PlayerReconnectGrace: cfg.PlayerReconnectGrace, LobbyIdleTimeout: cfg.LobbyIdleTimeout,
 		SkipRateLimit:      10 * time.Second,
 		YearLookaheadDepth: cfg.YearLookaheadDepth, YearLookupTimeout: cfg.YearLookupTimeout,
-		AppDomain: cfg.AppDomain, LiveKitURL: cfg.LiveKitURL, LiveKitTokenTTL: 2 * time.Hour, MediaTTL: 30 * time.Minute,
+		AppDomain: cfg.AppDomain, MediaTTL: 30 * time.Minute,
 	}
-	manager := gamesvc.NewManager(gsCfg, st, trackSource, mediaSigner, broadcaster, livekitTokens, issuer, log)
+	manager := gamesvc.NewManager(gsCfg, st, trackSource, mediaSigner, transcoder, issuer, log)
 	manager.RehydrateFromSnapshots(ctx)
 	go manager.RunJanitor(ctx)
 
-	api := httpapi.New(cfg, issuer, st, manager, syncer, resolver, mbClient, nav, log)
+	api := httpapi.New(cfg, issuer, mediaSigner, transcoder, st, manager, syncer, resolver, mbClient, nav, log)
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,

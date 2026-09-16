@@ -163,22 +163,10 @@ func (c *Client) SearchPage(ctx context.Context, songOffset, songCount int) ([]S
 	return resp.SearchResult3.Song, nil
 }
 
-// StreamURL builds the upstream stream URL for the media service to fetch
-// from. It is never exposed directly to browser clients.
-func (c *Client) StreamURL(trackID, format string, maxBitRate int) (string, error) {
-	v, err := c.authParams()
-	if err != nil {
-		return "", err
-	}
-	v.Set("id", trackID)
-	v.Set("format", format)
-	v.Set("maxBitRate", strconv.Itoa(maxBitRate))
-	return fmt.Sprintf("%s/rest/stream.view?%s", c.baseURL, v.Encode()), nil
-}
-
 // RawStreamURL builds a stream URL for the original, untranscoded file
-// (format=raw), so custom tags embedded in it can be read directly — these
-// are not exposed by any of Navidrome's own metadata endpoints.
+// (format=raw). The library sync reads custom tags from it (these are not
+// exposed by any of Navidrome's own metadata endpoints) and the transcoder
+// uses it as its FFmpeg input. It is never exposed to browser clients.
 func (c *Client) RawStreamURL(trackID string) (string, error) {
 	v, err := c.authParams()
 	if err != nil {

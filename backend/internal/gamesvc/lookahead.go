@@ -2,7 +2,6 @@ package gamesvc
 
 import (
 	"context"
-	"time"
 )
 
 // usedAndPendingIDs returns every track id that must not be redrawn: used
@@ -29,34 +28,30 @@ func (mg *ManagedGame) ensureLookahead() {
 			card, err := mg.trackSource.DrawAndResolve(context.Background(), context.Background(), exclude)
 			mg.enqueue(func() {
 				mg.resolving--
-				if err == nil && card != nil {
-					mg.candidates = append(mg.candidates, card)
-					mg.preloadCandidate(card)
+				if err != nil || card == nil {
+					return
 				}
+				// A synchronous fallback draw in nextCandidate may have picked
+				// the same track while this one was resolving.
+				if mg.g.UsedTrackIDs[card.Card.TrackID] || mg.hasCandidate(card.Card.TrackID) {
+					mg.ensureLookahead()
+					return
+				}
+				mg.candidates = append(mg.candidates, card)
+				mg.trackWarmer.Warm(card.Card.TrackID)
+				mg.announceNextTrack()
 			})
 		}()
 	}
 }
 
-// preloadCandidate overlaps Navidrome download for an upcoming turn with the
-// current turn. A cache hit makes its later PREPARING phase only a LiveKit
-// publication setup instead of a full source download.
-func (mg *ManagedGame) preloadCandidate(candidate *Candidate) {
-	if candidate == nil {
-		return
-	}
-	token, err := mg.mediaSigner.Issue(mg.id, candidate.Card.TrackID, mg.cfg.MediaTTL)
-	if err != nil {
-		mg.log.Warn("failed to authorise audio preload", "game_id", mg.id, "track_id", candidate.Card.TrackID, "error", err)
-		return
-	}
-	go func(trackID, token string) {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		defer cancel()
-		if err := mg.broadcaster.Preload(ctx, mg.id, trackID, token); err != nil {
-			mg.log.Warn("failed to preload audio source", "game_id", mg.id, "track_id", trackID, "error", err)
+func (mg *ManagedGame) hasCandidate(trackID string) bool {
+	for _, c := range mg.candidates {
+		if c.Card.TrackID == trackID {
+			return true
 		}
-	}(candidate.Card.TrackID, token)
+	}
+	return false
 }
 
 // nextCandidate takes the head of the resolved pipeline, or falls back to a

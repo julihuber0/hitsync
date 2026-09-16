@@ -69,7 +69,8 @@ func (mg *ManagedGame) persistOnGameOver() {
 
 // restoreFromSnapshot rehydrates a ManagedGame's rules-engine state from a
 // crash-recovery snapshot (§17). Any game whose phase involved audio resumes
-// in PLACING with a fresh timer.
+// in PLACING with a fresh timer, with the turn's track restarting from the
+// beginning for players as they reconnect.
 func (mg *ManagedGame) restoreFromSnapshot(data []byte) error {
 	var state game.State
 	if err := json.Unmarshal(data, &state); err != nil {
@@ -87,6 +88,9 @@ func (mg *ManagedGame) restoreFromSnapshot(data []byte) error {
 		fallthrough
 	case game.PhasePlacing:
 		mg.schedulePhaseTimeout(mg.cfg.TurnPlacementTimeout, mg.onPlacementTimeout)
+		if mg.g.Turn != nil {
+			mg.track = &activeTrack{prepareID: newID(), trackID: mg.g.Turn.Track.TrackID, startAtServerMs: nowMs()}
+		}
 	}
 	return nil
 }

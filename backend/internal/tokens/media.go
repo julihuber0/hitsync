@@ -10,24 +10,28 @@ import (
 	"time"
 )
 
-// MediaPayload is the signed payload embedded in a private broadcast-control token.
+// MediaPayload is the signed payload of a media download token.
 type MediaPayload struct {
 	TrackID string `json:"t"`
 	GameID  string `json:"g"`
 	Exp     int64  `json:"exp"`
 }
 
-// MediaSigner mints HMAC-signed control tokens shared with the media worker.
+// MediaSigner mints the short-lived tokens embedded in the media URLs sent to
+// players, so a browser can only download tracks its game handed out.
 type MediaSigner struct {
 	secret []byte
 }
 
-// NewMediaSigner creates a MediaSigner bound to MEDIA_SHARED_SECRET.
+// NewMediaSigner creates a MediaSigner. Its HMAC key is derived from secret
+// with a fixed label, keeping it independent of the JWT signing key.
 func NewMediaSigner(secret string) *MediaSigner {
-	return &MediaSigner{secret: []byte(secret)}
+	h := hmac.New(sha256.New, []byte(secret))
+	h.Write([]byte("hitsync media token v1"))
+	return &MediaSigner{secret: h.Sum(nil)}
 }
 
-// Issue mints a stream token for (game, track), valid for the given TTL.
+// Issue mints a media token for (game, track), valid for the given TTL.
 func (m *MediaSigner) Issue(gameID, trackID string, ttl time.Duration) (string, error) {
 	payload := MediaPayload{
 		TrackID: trackID,
@@ -43,14 +47,13 @@ func (m *MediaSigner) Issue(gameID, trackID string, ttl time.Duration) (string, 
 	return encPayload + "." + sig, nil
 }
 
-// Verify checks a stream token's signature and expiry, and that it matches
-// the given track id. Uses constant-time comparison for the signature.
-func (m *MediaSigner) Verify(token, wantTrackID string) (*MediaPayload, error) {
-	i := strings.IndexByte(token, '.')
-	if i < 0 {
+// Verify checks a media token's signature and expiry and returns its payload.
+// Uses constant-time comparison for the signature.
+func (m *MediaSigner) Verify(token string) (*MediaPayload, error) {
+	encPayload, sig, ok := strings.Cut(token, ".")
+	if !ok {
 		return nil, errors.New("malformed token")
 	}
-	encPayload, sig := token[:i], token[i+1:]
 
 	expectedSig := m.sign(encPayload)
 	if !hmac.Equal([]byte(sig), []byte(expectedSig)) {
@@ -64,9 +67,6 @@ func (m *MediaSigner) Verify(token, wantTrackID string) (*MediaPayload, error) {
 	var payload MediaPayload
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		return nil, err
-	}
-	if payload.TrackID != wantTrackID {
-		return nil, errors.New("track id mismatch")
 	}
 	if time.Now().Unix() > payload.Exp {
 		return nil, errors.New("token expired")

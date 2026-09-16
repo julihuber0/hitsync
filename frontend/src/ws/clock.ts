@@ -22,9 +22,13 @@ export function computeSample(c0: number, s: number, c1: number): ClockSample {
   return { rttMs, offsetMs };
 }
 
+/** How many recent samples the offset is chosen from. */
+const SAMPLE_WINDOW = 10;
+
+/** Estimates the server clock from a sliding window of ping/pong samples. */
 export class ClockSync {
+  private samples: ClockSample[] = [];
   private offsetMs = 0;
-  private lastUpdated = 0;
 
   offset(): number {
     return this.offsetMs;
@@ -34,22 +38,14 @@ export class ClockSync {
     return Date.now() + this.offsetMs;
   }
 
-  /** Applies a new sample if it is better than the stored one (§10.3). */
-  applySamples(samples: ClockSample[]): void {
-    const best = pickBestSample(samples);
-    if (!best) return;
-    const now = Date.now();
-    const stale = now - this.lastUpdated > 2 * 60 * 1000;
-    if (this.lastUpdated === 0 || stale || samples.length > 1) {
-      this.offsetMs = best.offsetMs;
-      this.lastUpdated = now;
-    }
-  }
-
-  applySampleIfBetter(sample: ClockSample, previousBestRtt: number): void {
-    if (sample.rttMs < previousBestRtt || Date.now() - this.lastUpdated > 2 * 60 * 1000) {
-      this.offsetMs = sample.offsetMs;
-      this.lastUpdated = Date.now();
-    }
+  /**
+   * Adds a sample and re-derives the offset from the lowest-RTT sample in
+   * the window. The window slides, so a stale best sample eventually gives
+   * way to fresh ones if the clocks drift apart.
+   */
+  addSample(sample: ClockSample): void {
+    this.samples.push(sample);
+    if (this.samples.length > SAMPLE_WINDOW) this.samples.shift();
+    this.offsetMs = pickBestSample(this.samples)!.offsetMs;
   }
 }

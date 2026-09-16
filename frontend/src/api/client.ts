@@ -41,7 +41,6 @@ export interface AppConfig {
   defaultTargetCards: number;
   defaultStartTokens: number;
   songGuessAvailable: boolean;
-  livekitUrl: string;
 }
 
 export interface PlayerIdentity {

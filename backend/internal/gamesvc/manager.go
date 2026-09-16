@@ -10,9 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/julianhuber/hitsync/backend/internal/broadcast"
 	"github.com/julianhuber/hitsync/backend/internal/game"
-	"github.com/julianhuber/hitsync/backend/internal/livekit"
 	"github.com/julianhuber/hitsync/backend/internal/store"
 	"github.com/julianhuber/hitsync/backend/internal/tokens"
 	"github.com/julianhuber/hitsync/backend/internal/ws"
@@ -38,32 +36,30 @@ type Manager struct {
 	games    map[string]*ManagedGame
 	byInvite map[string]string
 
-	cfg           Config
-	st            *store.Store
-	trackSource   *TrackSource
-	mediaSigner   *tokens.MediaSigner
-	broadcaster   broadcast.Controller
-	livekitTokens *livekit.TokenIssuer
-	issuer        *tokens.Issuer
-	log           *slog.Logger
+	cfg         Config
+	st          *store.Store
+	trackSource *TrackSource
+	mediaSigner *tokens.MediaSigner
+	trackWarmer TrackWarmer
+	issuer      *tokens.Issuer
+	log         *slog.Logger
 
 	stopJanitor chan struct{}
 }
 
 // NewManager creates a Manager.
-func NewManager(cfg Config, st *store.Store, ts *TrackSource, mediaSigner *tokens.MediaSigner, broadcaster broadcast.Controller, livekitTokens *livekit.TokenIssuer, issuer *tokens.Issuer, log *slog.Logger) *Manager {
+func NewManager(cfg Config, st *store.Store, ts *TrackSource, mediaSigner *tokens.MediaSigner, warmer TrackWarmer, issuer *tokens.Issuer, log *slog.Logger) *Manager {
 	return &Manager{
-		games:         map[string]*ManagedGame{},
-		byInvite:      map[string]string{},
-		cfg:           cfg,
-		st:            st,
-		trackSource:   ts,
-		mediaSigner:   mediaSigner,
-		broadcaster:   broadcaster,
-		livekitTokens: livekitTokens,
-		issuer:        issuer,
-		log:           log,
-		stopJanitor:   make(chan struct{}),
+		games:       map[string]*ManagedGame{},
+		byInvite:    map[string]string{},
+		cfg:         cfg,
+		st:          st,
+		trackSource: ts,
+		mediaSigner: mediaSigner,
+		trackWarmer: warmer,
+		issuer:      issuer,
+		log:         log,
+		stopJanitor: make(chan struct{}),
 	}
 }
 
@@ -103,7 +99,7 @@ func (m *Manager) CreateGame(displayName string, targetCards, startTokens *int, 
 		settings.EnableSongGuess = *enableSongGuess
 	}
 
-	mg := newManagedGame(id, code, settings, m.trackSource, m.mediaSigner, m.broadcaster, m.livekitTokens, m.st, m.cfg, m.log, m)
+	mg := newManagedGame(id, code, settings, m.trackSource, m.mediaSigner, m.trackWarmer, m.st, m.cfg, m.log, m)
 	m.games[id] = mg
 	m.byInvite[code] = id
 	m.mu.Unlock()
@@ -315,7 +311,7 @@ func (m *Manager) ForceEndGame(gameID string) error {
 		mg.g.Phase = game.PhaseGameOver
 		mg.g.WinnerID = ""
 		mg.clearPhaseTimeout()
-		mg.stopBroadcast()
+		mg.stopTrack()
 		mg.broadcastState()
 		mg.persistOnGameOver()
 	})
@@ -396,7 +392,7 @@ func (m *Manager) RehydrateFromSnapshots(ctx context.Context) {
 		return
 	}
 	for _, snap := range snapshots {
-		mg := newManagedGame(snap.GameID, snap.InviteCode, game.Settings{}, m.trackSource, m.mediaSigner, m.broadcaster, m.livekitTokens, m.st, m.cfg, m.log, m)
+		mg := newManagedGame(snap.GameID, snap.InviteCode, game.Settings{}, m.trackSource, m.mediaSigner, m.trackWarmer, m.st, m.cfg, m.log, m)
 		if err := mg.restoreFromSnapshot(snap.State); err != nil {
 			m.log.Error("failed to restore game snapshot", "game_id", snap.GameID, "error", err)
 			mg.stop()

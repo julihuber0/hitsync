@@ -3,8 +3,6 @@ package gamesvc
 import (
 	"time"
 
-	"github.com/julianhuber/hitsync/backend/internal/game"
-	"github.com/julianhuber/hitsync/backend/internal/livekit"
 	"github.com/julianhuber/hitsync/backend/internal/ws"
 )
 
@@ -25,34 +23,9 @@ func (mg *ManagedGame) registerConn(playerID string, c *ws.Conn) bool {
 	}
 
 	c.Send(ws.TypeState, mg.buildState(playerID))
-	mg.resendActiveAudioBurst(c)
+	mg.resendAudio(c)
 	mg.broadcastState()
 	return true
-}
-
-// resendActiveAudioBurst replays the current track_prepare/track_start so a
-// reconnecting client rejoins the currently-published LiveKit broadcast.
-func (mg *ManagedGame) resendActiveAudioBurst(c *ws.Conn) {
-	if mg.lastPrep == nil {
-		return
-	}
-	if mg.g.Phase != game.PhasePlacing && mg.g.Phase != game.PhaseChallenging {
-		return
-	}
-	livekitToken, err := mg.livekitTokens.Issue(livekit.RoomName(mg.id), c.PlayerID)
-	if err != nil {
-		mg.log.Error("failed to issue reconnect LiveKit token", "game_id", mg.id, "player_id", c.PlayerID, "error", err)
-		return
-	}
-	c.Send(ws.TypeTrackPrepare, ws.TrackPreparePayload{
-		PrepareID:    mg.lastPrep.prepareID,
-		TrackID:      mg.lastPrep.trackID,
-		LiveKitURL:   mg.cfg.LiveKitURL,
-		LiveKitToken: livekitToken,
-		RoomName:     livekit.RoomName(mg.id),
-		DurationMs:   mg.lastPrep.durationMs,
-	})
-	c.Send(ws.TypeTrackStart, ws.TrackStartPayload{PrepareID: mg.lastPrep.prepareID})
 }
 
 // unregisterConn handles a socket closing: marks the player disconnected
@@ -88,14 +61,13 @@ func (mg *ManagedGame) onReconnectGraceExpired(playerID string) {
 	ended := mg.g.RemovePlayer(playerID, mg.cfg.MinPlayers)
 	if ended {
 		mg.clearPhaseTimeout()
-		mg.stopBroadcast()
+		mg.stopTrack()
 		mg.broadcastState()
 		mg.persistOnGameOver()
 		return
 	}
 	if wasActive {
 		mg.clearPhaseTimeout()
-		mg.stopBroadcast()
 		mg.g.Turn = nil
 		mg.beginNextTurn(true)
 		return

@@ -10,58 +10,8 @@ networks:
 volumes:
   pgdata:
   mediacache:
-  livekitconfig:
 
 services:
-  livekit-config:
-    image: busybox:1.37
-    restart: "no"
-    env_file: [.env]
-    command: ["sh", "-ec", "printf '%s: %s\\n' \"$$LIVEKIT_API_KEY\" \"$$LIVEKIT_API_SECRET\" > /config/keys.txt && chmod 600 /config/keys.txt"]
-    volumes: [livekitconfig:/config]
-    networks: [internal]
-
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    networks: [internal]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-    deploy:
-      resources:
-        limits: { memory: 128M }
-
-  livekit:
-    image: livekit/livekit-server:v1.13
-    restart: unless-stopped
-    command: --config /etc/livekit/livekit.yaml
-    env_file: [.env]
-    depends_on:
-      redis: { condition: service_healthy }
-      livekit-config: { condition: service_completed_successfully }
-    volumes:
-      - ./livekit.yaml:/etc/livekit/livekit.yaml:ro
-      - livekitconfig:/run/hitsync-livekit
-    ports:
-      # WebRTC media must reach the SFU directly; Traefik only proxies 7880.
-      # These must match rtc.tcp_port / rtc.port_range_* in livekit.yaml, and
-      # are deliberately non-default so a second LiveKit instance on the same
-      # host (e.g. another project's compose stack) doesn't collide with this
-      # one on 7881/50000-50100.
-      - "7883:7883/tcp"
-      - "51000-51100:51000-51100/udp"
-    networks: [internal, proxy]
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=${TRAEFIK_NETWORK:-proxy}
-      - traefik.http.routers.hitsync-livekit.rule=Host(`${LIVEKIT_DOMAIN}`)
-      - traefik.http.routers.hitsync-livekit.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
-      - traefik.http.routers.hitsync-livekit.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
-      - traefik.http.services.hitsync-livekit.loadbalancer.server.port=7880
-
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -86,7 +36,8 @@ services:
     env_file: [.env]
     depends_on:
       postgres: { condition: service_healthy }
-      livekit: { condition: service_started }
+    # Transcoded tracks served to players; disposable.
+    volumes: [mediacache:/cache]
     networks: [internal, proxy]
     healthcheck:
       test: ["CMD", "/app/server", "-healthcheck"]
@@ -105,24 +56,11 @@ services:
       - traefik.http.routers.hitsync-api.priority=20
       - traefik.http.services.hitsync-api.loadbalancer.server.port=8080
 
-  media:
-    build: ./media
-    restart: unless-stopped
-    env_file: [.env]
-    depends_on:
-      livekit: { condition: service_started }
-    volumes: [mediacache:/cache]
-    networks: [internal]
-    deploy:
-      resources:
-        limits: { memory: 256M, cpus: "1" }
-
   frontend:
     build: ./frontend
     restart: unless-stopped
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
-      LIVEKIT_DOMAIN: ${LIVEKIT_DOMAIN}
     networks: [proxy]
     deploy:
       resources:

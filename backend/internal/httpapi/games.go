@@ -18,7 +18,6 @@ func (a *API) handleConfig(w http.ResponseWriter, r *http.Request) {
 		"defaultTargetCards": a.cfg.DefaultTargetCards,
 		"defaultStartTokens": a.cfg.DefaultStartTokens,
 		"songGuessAvailable": a.cfg.RuleEnableSongGuess,
-		"livekitUrl":         a.cfg.LiveKitURL,
 	})
 }
 

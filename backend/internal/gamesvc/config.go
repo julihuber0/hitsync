@@ -14,8 +14,8 @@ type Config struct {
 	DisconnectedPlacementTimeout time.Duration // fixed 20s per §8.10
 	TurnChallengeWindow          time.Duration
 	RevealDuration               time.Duration
-	PreparingCap                 time.Duration // fixed 8s per §8.5
-	StartAtLeadMs                int64         // fixed 400ms per §8.5
+	PreparingCap                 time.Duration // fixed 8s per §8.5; bounds waiting for clients' downloads
+	StartAtLeadMs                int64         // fixed 400ms per §8.5; delay between track_start and the shared start
 	PlayerReconnectGrace         time.Duration
 	LobbyIdleTimeout             time.Duration
 	SkipRateLimit                time.Duration // fixed 10s per §8.11
@@ -23,8 +23,6 @@ type Config struct {
 	YearLookaheadDepth int
 	YearLookupTimeout  time.Duration
 
-	AppDomain       string
-	LiveKitURL      string
-	LiveKitTokenTTL time.Duration
-	MediaTTL        time.Duration
+	AppDomain string
+	MediaTTL  time.Duration // lifetime of a media download URL
 }

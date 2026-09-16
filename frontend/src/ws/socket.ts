@@ -4,6 +4,7 @@ import type {
   ErrorPayload,
   RevealPayload,
   StatePayload,
+  TrackPreloadPayload,
   TrackPreparePayload,
   TrackStartPayload,
   TrackStopPayload,
@@ -11,6 +12,7 @@ import type {
 
 export interface SocketHandlers {
   onState?: (s: StatePayload) => void;
+  onTrackPreload?: (p: TrackPreloadPayload) => void;
   onTrackPrepare?: (p: TrackPreparePayload) => void;
   onTrackStart?: (p: TrackStartPayload) => void;
   onTrackStop?: (p: TrackStopPayload) => void;
@@ -28,9 +30,7 @@ export class GameSocket {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private resyncTimer: ReturnType<typeof setInterval> | null = null;
   private closedByUser = false;
-  private pendingPings = new Map<number, number>();
   readonly clock = new ClockSync();
-  private bestRttMs = Infinity;
 
   constructor(
     private readonly url: string,
@@ -100,18 +100,14 @@ export class GameSocket {
     switch (env.type) {
       case "pong": {
         const p = env.payload as { c0: number; s: number };
-        const c1 = Date.now();
-        const sample = computeSample(p.c0, p.s, c1);
-        this.pendingPings.delete(p.c0);
-        if (sample.rttMs < this.bestRttMs || Date.now() - this.lastClockUpdate > 2 * 60 * 1000) {
-          this.bestRttMs = sample.rttMs;
-          this.clock.applySamples([sample]);
-          this.lastClockUpdate = Date.now();
-        }
+        this.clock.addSample(computeSample(p.c0, p.s, Date.now()));
         break;
       }
       case "state":
         this.handlers.onState?.(env.payload as StatePayload);
+        break;
+      case "track_preload":
+        this.handlers.onTrackPreload?.(env.payload as TrackPreloadPayload);
         break;
       case "track_prepare":
         this.handlers.onTrackPrepare?.(env.payload as TrackPreparePayload);
@@ -134,21 +130,18 @@ export class GameSocket {
     }
   }
 
-  private lastClockUpdate = 0;
-
   private ping(): void {
     const c0 = Date.now();
     this.send("ping", { c0 });
   }
 
   private startClockSync(): void {
-    this.bestRttMs = Infinity;
+    this.stopClockSync();
     // 7 samples 120ms apart on connect (§10.3).
     for (let i = 0; i < 7; i++) {
       setTimeout(() => this.ping(), i * 120);
     }
     this.resyncTimer = setInterval(() => {
-      this.bestRttMs = Infinity;
       for (let i = 0; i < 3; i++) {
         setTimeout(() => this.ping(), i * 120);
       }

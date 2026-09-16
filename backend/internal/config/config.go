@@ -13,8 +13,6 @@ import (
 type Config struct {
 	// General
 	AppDomain           string `env:"APP_DOMAIN,required"`
-	LiveKitURL          string `env:"LIVEKIT_URL,required"`
-	MediaInternalURL    string `env:"MEDIA_INTERNAL_URL" envDefault:"http://media:8090"`
 	TraefikNetwork      string `env:"TRAEFIK_NETWORK" envDefault:"proxy"`
 	TraefikEntrypoint   string `env:"TRAEFIK_ENTRYPOINT" envDefault:"websecure"`
 	TraefikCertResolver string `env:"TRAEFIK_CERTRESOLVER" envDefault:"letsencrypt"`
@@ -27,12 +25,9 @@ type Config struct {
 	TZ       string `env:"TZ" envDefault:"Europe/Berlin"`
 
 	// Secrets
-	AppAccessCode     string `env:"APP_ACCESS_CODE,required" secret:"true"`
-	AdminPassword     string `env:"ADMIN_PASSWORD,required" secret:"true"`
-	JWTSecret         string `env:"JWT_SECRET,required" secret:"true"`
-	MediaSharedSecret string `env:"MEDIA_SHARED_SECRET,required" secret:"true"`
-	LiveKitAPIKey     string `env:"LIVEKIT_API_KEY,required" secret:"true"`
-	LiveKitAPISecret  string `env:"LIVEKIT_API_SECRET,required" secret:"true"`
+	AppAccessCode string `env:"APP_ACCESS_CODE,required" secret:"true"`
+	AdminPassword string `env:"ADMIN_PASSWORD,required" secret:"true"`
+	JWTSecret     string `env:"JWT_SECRET,required" secret:"true"`
 
 	// Navidrome
 	NavidromeURL        string        `env:"NAVIDROME_URL,required"`
@@ -41,11 +36,11 @@ type Config struct {
 	NavidromeClientName string        `env:"NAVIDROME_CLIENT_NAME" envDefault:"hitsync"`
 	NavidromeTimeout    time.Duration `env:"NAVIDROME_TIMEOUT" envDefault:"30s"`
 
-	// Server-side audio ingest/cache
-	AudioFormat        string `env:"AUDIO_FORMAT" envDefault:"mp3"`
-	AudioBitrate       int    `env:"AUDIO_BITRATE" envDefault:"192"`
+	// Audio transcoding for player downloads
+	AudioBitrate       int    `env:"AUDIO_BITRATE" envDefault:"128"` // kbit/s, MP3
 	MediaCacheDir      string `env:"MEDIA_CACHE_DIR" envDefault:"/cache"`
 	MediaCacheMaxBytes int64  `env:"MEDIA_CACHE_MAX_BYTES" envDefault:"2147483648"`
+	FFmpegPath         string `env:"FFMPEG_PATH" envDefault:"ffmpeg"`
 
 	// Library and year resolution
 	LibrarySyncInterval     time.Duration `env:"LIBRARY_SYNC_INTERVAL" envDefault:"6h"`
@@ -113,19 +108,9 @@ func (c *Config) Validate() error {
 	if c.AppDomain == "" {
 		errs = append(errs, "APP_DOMAIN is required")
 	}
-	if c.LiveKitURL == "" {
-		errs = append(errs, "LIVEKIT_URL is required")
-	}
 	requireLen("APP_ACCESS_CODE", c.AppAccessCode, 4)
 	requireLen("ADMIN_PASSWORD", c.AdminPassword, 8)
 	requireLen("JWT_SECRET", c.JWTSecret, 32)
-	requireLen("MEDIA_SHARED_SECRET", c.MediaSharedSecret, 32)
-	if c.LiveKitAPIKey == "" {
-		errs = append(errs, "LIVEKIT_API_KEY is required")
-	}
-	if c.LiveKitAPISecret == "" {
-		errs = append(errs, "LIVEKIT_API_SECRET is required")
-	}
 	requireLen("POSTGRES_PASSWORD", c.PostgresPassword, 8)
 
 	if c.NavidromeURL == "" {
@@ -139,6 +124,9 @@ func (c *Config) Validate() error {
 	}
 	if c.MusicBrainzEnabled && strings.TrimSpace(c.MusicBrainzContact) == "" {
 		errs = append(errs, "MUSICBRAINZ_CONTACT is required when MUSICBRAINZ_ENABLED=true")
+	}
+	if c.AudioBitrate < 32 || c.AudioBitrate > 320 {
+		errs = append(errs, "AUDIO_BITRATE must be between 32 and 320")
 	}
 	if c.MinPlayers < 1 {
 		errs = append(errs, "MIN_PLAYERS must be at least 1")
@@ -192,19 +180,16 @@ func (c *Config) Redacted() map[string]any {
 	}
 	return map[string]any{
 		"APP_DOMAIN":           c.AppDomain,
-		"LIVEKIT_URL":          c.LiveKitURL,
-		"MEDIA_INTERNAL_URL":   c.MediaInternalURL,
 		"TRAEFIK_NETWORK":      c.TraefikNetwork,
 		"LOG_LEVEL":            c.LogLevel,
 		"TZ":                   c.TZ,
 		"APP_ACCESS_CODE":      mask(c.AppAccessCode),
 		"ADMIN_PASSWORD":       mask(c.AdminPassword),
 		"JWT_SECRET":           mask(c.JWTSecret),
-		"MEDIA_SHARED_SECRET":  mask(c.MediaSharedSecret),
-		"LIVEKIT_API_KEY":      mask(c.LiveKitAPIKey),
-		"LIVEKIT_API_SECRET":   mask(c.LiveKitAPISecret),
 		"NAVIDROME_URL":        c.NavidromeURL,
 		"NAVIDROME_USERNAME":   c.NavidromeUsername,
+		"AUDIO_BITRATE":        c.AudioBitrate,
+		"MEDIA_CACHE_DIR":      c.MediaCacheDir,
 		"NAVIDROME_PASSWORD":   mask(c.NavidromePassword),
 		"POSTGRES_USER":        c.PostgresUser,
 		"POSTGRES_PASSWORD":    mask(c.PostgresPassword),

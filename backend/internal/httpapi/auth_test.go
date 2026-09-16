@@ -20,7 +20,6 @@ func testAPI() *API {
 		MinPlayers:    2, MaxPlayers: 12, DefaultTargetCards: 10, DefaultStartTokens: 2,
 		RuleEnableSongGuess: true,
 		AppDomain:           "hitsync.example.com",
-		LiveKitURL:          "wss://livekit.example.com",
 	}
 	return &API{
 		cfg:           cfg,
@@ -185,7 +184,7 @@ func TestHandleConfig(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if body["livekitUrl"] != "wss://livekit.example.com" {
-		t.Errorf("livekitUrl = %v, want wss://livekit.example.com", body["livekitUrl"])
+	if body["maxPlayers"] != float64(12) {
+		t.Errorf("maxPlayers = %v, want 12", body["maxPlayers"])
 	}
 }

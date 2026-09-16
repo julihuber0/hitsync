@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pickBestSample, computeSample } from "./clock";
+import { ClockSync, pickBestSample, computeSample } from "./clock";
 
 describe("pickBestSample", () => {
   it("picks the sample with the lowest RTT", () => {
@@ -30,5 +30,23 @@ describe("computeSample", () => {
     const sample = computeSample(c0, s, c1);
     expect(sample.rttMs).toBe(40);
     expect(sample.offsetMs).toBe(100);
+  });
+});
+
+describe("ClockSync", () => {
+  it("uses the lowest-RTT sample seen so far", () => {
+    const clock = new ClockSync();
+    clock.addSample({ rttMs: 200, offsetMs: 90 });
+    expect(clock.offset()).toBe(90);
+    clock.addSample({ rttMs: 20, offsetMs: 5 });
+    clock.addSample({ rttMs: 150, offsetMs: 70 });
+    expect(clock.offset()).toBe(5);
+  });
+
+  it("lets a best sample age out of the window", () => {
+    const clock = new ClockSync();
+    clock.addSample({ rttMs: 10, offsetMs: 1 });
+    for (let i = 0; i < 10; i++) clock.addSample({ rttMs: 40, offsetMs: 50 });
+    expect(clock.offset()).toBe(50);
   });
 });

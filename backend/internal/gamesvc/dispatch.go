@@ -10,12 +10,6 @@ import (
 // handler. Always called on the game's own goroutine (§13.1).
 func dispatchMessage(mg *ManagedGame, c *ws.Conn, env ws.Envelope) {
 	switch env.Type {
-	case ws.TypePing:
-		var p ws.PingPayload
-		if json.Unmarshal(env.Payload, &p) == nil {
-			c.Send(ws.TypePong, ws.PongPayload{C0: p.C0, S: nowMs()})
-		}
-
 	case ws.TypeReady:
 		var p ws.ReadyPayload
 		if json.Unmarshal(env.Payload, &p) == nil {
@@ -88,12 +82,11 @@ func dispatchMessage(mg *ManagedGame, c *ws.Conn, env ws.Envelope) {
 		switch {
 		case ended:
 			mg.clearPhaseTimeout()
-			mg.stopBroadcast()
+			mg.stopTrack()
 			mg.persistOnGameOver()
 			mg.broadcastState()
 		case wasActive:
 			mg.clearPhaseTimeout()
-			mg.stopBroadcast()
 			mg.g.Turn = nil
 			mg.beginNextTurn(true)
 		default:

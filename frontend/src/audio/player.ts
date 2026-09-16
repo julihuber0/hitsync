@@ -1,22 +1,51 @@
-import { Room, RoomEvent, Track, type RemoteTrack } from "livekit-client";
+import { TrackCache } from "./trackCache";
+import { expectedPosition } from "./sync";
 
 const FADE_STEP_MS = 30;
+// iOS Safari may never report metadata for an element it hasn't been allowed
+// to play yet; the downloaded file is playable regardless.
+const METADATA_TIMEOUT_MS = 2000;
 
-export type AudioConnectionState = "idle" | "connecting" | "subscribed" | "playing" | "error";
+export type AudioState = "idle" | "loading" | "ready" | "playing" | "error";
 
-// The SFU owns the audio clock. Browsers subscribe to a remote track; they
-// never download, seek, or rate-correct an MP3.
-export class LiveAudioPlayer {
-  private room: Room | null = null;
-  private element: HTMLAudioElement | null = null;
-  private prepareID: string | null = null;
-  private preparePromise: Promise<void> | null = null;
-  private generation = 0;
+interface CurrentTrack {
+  prepareId: string;
+  trackId: string;
+  fallbackDurationSec: number;
+  promise: Promise<void>;
+  loaded: boolean;
+  failed: boolean;
+  startAtServerMs: number | null;
+}
+
+/**
+ * Plays the turn's track from a local, fully downloaded copy. Only the start
+ * is synchronised: playback begins at the position implied by a shared start
+ * instant on the server clock and then runs untouched until stopped. Holds
+ * at most the current track and the next turn's preloaded track in memory.
+ */
+export class SyncedAudioPlayer {
+  // One element for the whole session: once the user has allowed playback on
+  // it (iOS), later turns can play without another gesture.
+  private readonly element: HTMLAudioElement;
+  private readonly cache = new TrackCache();
+  private current: CurrentTrack | null = null;
+  private preloadTrackId: string | null = null;
+  private serverNow: () => number = Date.now;
+  private state: AudioState = "idle";
+  private startTimer: ReturnType<typeof setTimeout> | null = null;
   private fadeTimer: ReturnType<typeof setInterval> | null = null;
-  private volume = LiveAudioPlayer.loadVolume();
-  private muted = LiveAudioPlayer.loadMuted();
+  private volume = SyncedAudioPlayer.loadVolume();
+  private muted = SyncedAudioPlayer.loadMuted();
   onAutoplayBlocked: (() => void) | null = null;
-  onConnectionStateChange: ((state: AudioConnectionState) => void) | null = null;
+  onStateChange: ((state: AudioState) => void) | null = null;
+
+  constructor() {
+    this.element = new Audio();
+    this.element.loop = true;
+    this.element.preload = "auto";
+    this.element.volume = this.effectiveVolume();
+  }
 
   private static loadVolume(): number {
     const raw = localStorage.getItem("hs_volume");
@@ -25,8 +54,8 @@ export class LiveAudioPlayer {
   }
   private static loadMuted(): boolean { return localStorage.getItem("hs_muted") === "true"; }
 
-  // Called inside the create/join gesture so remote WebRTC output is allowed
-  // without a second interaction in browsers that gate audio playback.
+  // Called inside the create/join gesture so later playback is allowed
+  // without a second interaction in browsers that gate audio.
   primeAutoplay(): void {
     try {
       const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -41,142 +70,197 @@ export class LiveAudioPlayer {
     }
   }
 
-  // A prepare ID belongs to one game turn. React's development Strict Mode
-  // deliberately runs effects twice; returning the same promise here keeps
-  // that second effect from disconnecting the room created by the first.
-  prepare(prepareID: string, url: string, token: string): Promise<void> {
-    if (this.prepareID === prepareID && this.preparePromise) return this.preparePromise;
-
-    this.teardown();
-    const generation = this.generation;
-    const room = new Room();
-    this.room = room;
-    this.prepareID = prepareID;
-    this.setConnectionState("connecting");
-
-    const promise = new Promise<void>((resolve, reject) => {
-      let settled = false;
-      const done = (error?: Error) => {
-        if (settled) return;
-        settled = true;
-        error ? reject(error) : resolve();
-      };
-
-      room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
-        if (generation !== this.generation || track.kind !== Track.Kind.Audio || this.element) return;
-        const element = track.attach() as HTMLAudioElement;
-        element.autoplay = true;
-        element.volume = this.muted ? 0 : this.volume;
-        element.style.display = "none";
-        document.body.appendChild(element);
-        this.element = element;
-        this.setConnectionState("subscribed");
-        void element.play()
-          .then(() => {
-            if (generation === this.generation && this.element === element) this.setConnectionState("playing");
-          })
-          .catch(() => this.onAutoplayBlocked?.());
-        done();
-      });
-
-      room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
-        track.detach().forEach((element) => element.remove());
-        if (generation === this.generation && this.element) {
-          this.element = null;
-          this.setConnectionState("connecting");
-        }
-      });
-
-      room.on(RoomEvent.Disconnected, () => {
-        if (generation !== this.generation) return;
-        const error = new Error("LiveKit disconnected before the audio track arrived");
-        if (!settled) done(error);
-        this.removeElement();
-        this.room = null;
-        this.prepareID = null;
-        this.preparePromise = null;
-        this.setConnectionState("error");
-      });
-      void room.connect(url, token, { autoSubscribe: true })
-        .catch((error: unknown) => {
-          if (generation !== this.generation) return;
-          done(error instanceof Error ? error : new Error("LiveKit connection failed"));
-          this.removeElement();
-          this.room = null;
-          this.prepareID = null;
-          this.preparePromise = null;
-          this.setConnectionState("error");
-        });
-    });
-    this.preparePromise = promise;
-    return promise;
+  /** Downloads the next turn's track in the background. */
+  preload(trackId: string, url: string): void {
+    const previous = this.preloadTrackId;
+    if (previous && previous !== trackId && previous !== this.current?.trackId) this.cache.release(previous);
+    this.preloadTrackId = trackId;
+    // A failure is retried when the turn's track_prepare arrives.
+    this.cache.load(trackId, url).catch(() => {});
   }
 
-  start(): void { this.retryPlay(); }
+  /**
+   * Makes the turn's track playable, reusing a preloaded copy. Resolves once
+   * playback can start. Idempotent per prepareId unless the last attempt failed.
+   */
+  prepare(prepareId: string, trackId: string, url: string, durationMs: number): Promise<void> {
+    if (this.current?.prepareId === prepareId && !this.current.failed) return this.current.promise;
 
-  stop(fadeMs: number): void {
-    const element = this.element;
-    if (!element) {
-      this.teardown();
+    this.unloadCurrent(trackId);
+    if (this.preloadTrackId === trackId) this.preloadTrackId = null;
+    const current: CurrentTrack = {
+      prepareId, trackId, fallbackDurationSec: durationMs / 1000,
+      promise: Promise.resolve(), loaded: false, failed: false, startAtServerMs: null,
+    };
+    this.current = current;
+    this.setState("loading");
+
+    current.promise = this.cache.load(trackId, url)
+      .then((objectUrl) => {
+        if (this.current !== current) throw new DOMException("superseded", "AbortError");
+        return this.loadElement(objectUrl);
+      })
+      .then(() => {
+        if (this.current !== current) throw new DOMException("superseded", "AbortError");
+        current.loaded = true;
+        if (current.startAtServerMs === null) this.setState("ready");
+        else this.beginPlayback();
+      })
+      .catch((error: unknown) => {
+        if (this.current === current) {
+          current.failed = true;
+          this.setState("error");
+        }
+        throw error;
+      });
+    return current.promise;
+  }
+
+  /** Starts playback at the position implied by the shared start instant. */
+  start(prepareId: string, startAtServerMs: number, serverNow: () => number): void {
+    const current = this.current;
+    if (!current || current.prepareId !== prepareId) return;
+    // A reconnect replays track_start; don't interrupt playback that is
+    // already following the same timeline.
+    if (current.startAtServerMs === startAtServerMs && this.state === "playing") {
+      this.serverNow = serverNow;
       return;
     }
-    if (this.fadeTimer) clearInterval(this.fadeTimer);
-    const startVolume = element.volume;
+    current.startAtServerMs = startAtServerMs;
+    this.serverNow = serverNow;
+    // Otherwise prepare() begins playback once the track is loaded.
+    if (current.loaded) this.beginPlayback();
+  }
+
+  /** Fades out, then frees the track. */
+  stop(prepareId: string, fadeMs: number): void {
+    const current = this.current;
+    if (!current || current.prepareId !== prepareId) return;
+    this.clearPlaybackTimers();
+    if (this.element.paused) {
+      this.unloadCurrent();
+      return;
+    }
+    const startVolume = this.element.volume;
     const steps = Math.max(1, Math.floor(fadeMs / FADE_STEP_MS));
     let step = 0;
     this.fadeTimer = setInterval(() => {
       step++;
-      element.volume = Math.max(0, startVolume * (1 - step / steps));
-      if (step >= steps) {
-        if (this.fadeTimer) clearInterval(this.fadeTimer);
-        this.fadeTimer = null;
-        // A new turn may have prepared a replacement while the previous
-        // track was fading. Never tear down that replacement.
-        if (this.element === element) this.teardown();
-      }
+      this.element.volume = Math.max(0, startVolume * (1 - step / steps));
+      if (step >= steps && this.current === current) this.unloadCurrent();
     }, FADE_STEP_MS);
   }
 
+  /** Retries playback from a user gesture after the browser blocked autoplay. */
   retryPlay(): void {
-    const element = this.element;
-    void element?.play()
-      .then(() => {
-        if (element === this.element) this.setConnectionState("playing");
-      })
-      .catch(() => this.onAutoplayBlocked?.());
+    if (this.current?.loaded && this.current.startAtServerMs !== null) this.beginPlayback();
   }
+
   setVolume(v: number): void {
     this.volume = Math.min(1, Math.max(0, v));
     localStorage.setItem("hs_volume", String(this.volume));
-    if (this.element && !this.muted) this.element.volume = this.volume;
+    if (!this.fadeTimer) this.element.volume = this.effectiveVolume();
   }
   setMuted(muted: boolean): void {
     this.muted = muted;
     localStorage.setItem("hs_muted", String(muted));
-    if (this.element) this.element.volume = muted ? 0 : this.volume;
+    // Muting never pauses, so a muted client keeps its place in the song.
+    if (!this.fadeTimer) this.element.volume = this.effectiveVolume();
   }
   getVolume(): number { return this.volume; }
   isMuted(): boolean { return this.muted; }
 
+  /** Stops playback and frees every downloaded track. */
   teardown(): void {
-    this.generation++;
+    this.preloadTrackId = null;
+    this.unloadCurrent();
+    this.cache.clear();
+  }
+
+  private loadElement(src: string): Promise<void> {
+    const element = this.element;
+    return new Promise((resolve, reject) => {
+      const done = (error?: Error) => {
+        clearTimeout(timeout);
+        element.removeEventListener("loadedmetadata", onLoaded);
+        element.removeEventListener("error", onError);
+        if (error) reject(error);
+        else resolve();
+      };
+      const onLoaded = () => done();
+      const onError = () => done(new Error("the downloaded track could not be decoded"));
+      const timeout = setTimeout(() => done(), METADATA_TIMEOUT_MS);
+      element.addEventListener("loadedmetadata", onLoaded);
+      element.addEventListener("error", onError);
+      element.src = src;
+      element.load();
+    });
+  }
+
+  private beginPlayback(): void {
+    const current = this.current;
+    if (!current || current.startAtServerMs === null) return;
+    this.clearPlaybackTimers();
+    this.element.volume = this.effectiveVolume();
+
+    const position = this.expectedPosition(current.startAtServerMs);
+    if (position < 0) {
+      this.element.currentTime = 0;
+      this.startTimer = setTimeout(() => this.beginPlayback(), -position * 1000);
+      return;
+    }
+    this.element.currentTime = position;
+    this.element.play()
+      .then(() => {
+        if (this.current === current) this.setState("playing");
+      })
+      .catch((error: unknown) => {
+        if (this.current === current && error instanceof DOMException && error.name === "NotAllowedError") {
+          this.onAutoplayBlocked?.();
+        }
+      });
+  }
+
+  private expectedPosition(startAtServerMs: number): number {
+    return expectedPosition(this.serverNow(), startAtServerMs, this.durationSec());
+  }
+
+  // Prefer the decoded file's own length: every client has the same file, so
+  // they all loop at exactly the same point.
+  private durationSec(): number {
+    const d = this.element.duration;
+    return Number.isFinite(d) && d > 0 ? d : this.current?.fallbackDurationSec ?? NaN;
+  }
+
+  private effectiveVolume(): number {
+    return this.muted ? 0 : this.volume;
+  }
+
+  private clearPlaybackTimers(): void {
+    if (this.startTimer) clearTimeout(this.startTimer);
     if (this.fadeTimer) clearInterval(this.fadeTimer);
+    this.startTimer = null;
     this.fadeTimer = null;
-    this.removeElement();
-    this.room?.disconnect();
-    this.room = null;
-    this.prepareID = null;
-    this.preparePromise = null;
-    this.setConnectionState("idle");
   }
 
-  private removeElement(): void {
-    this.element?.pause();
-    this.element?.remove();
-    this.element = null;
+  /** Stops the current track and frees it, unless keepTrackId still needs it. */
+  private unloadCurrent(keepTrackId?: string): void {
+    this.clearPlaybackTimers();
+    const current = this.current;
+    this.current = null;
+    if (current) {
+      this.element.pause();
+      this.element.removeAttribute("src");
+      this.element.load();
+      if (current.trackId !== keepTrackId && current.trackId !== this.preloadTrackId) this.cache.release(current.trackId);
+    }
+    this.element.volume = this.effectiveVolume();
+    this.setState("idle");
   }
 
-  private setConnectionState(state: AudioConnectionState): void {
-    this.onConnectionStateChange?.(state);
+  private setState(state: AudioState): void {
+    if (this.state === state) return;
+    this.state = state;
+    this.onStateChange?.(state);
   }
 }

@@ -36,6 +36,7 @@ const (
 const (
 	TypePong         = "pong"
 	TypeState        = "state"
+	TypeTrackPreload = "track_preload"
 	TypeTrackPrepare = "track_prepare"
 	TypeTrackStart   = "track_start"
 	TypeTrackStop    = "track_stop"
@@ -60,7 +61,8 @@ type PongPayload struct {
 	S  int64 `json:"s"`
 }
 
-// ReadyPayload acknowledges a LiveKit room subscription during PREPARING.
+// ReadyPayload acknowledges during PREPARING that the client has downloaded
+// the turn's track and can start playing it.
 type ReadyPayload struct {
 	PrepareID string `json:"prepareId"`
 }
@@ -119,14 +121,20 @@ type KickedPayload struct {
 	Reason string `json:"reason"`
 }
 
-// TrackPreparePayload gives a player a short-lived, subscribe-only LiveKit
-// token. GuessOptions is only populated for the active player's socket.
+// TrackPreloadPayload asks clients to download the next turn's track in
+// the background while the current turn is still playing.
+type TrackPreloadPayload struct {
+	TrackID  string `json:"trackId"`
+	MediaURL string `json:"mediaUrl"`
+}
+
+// TrackPreparePayload starts a turn's PREPARING phase: clients download the
+// track (or reuse their preloaded copy) and answer with TypeReady.
+// GuessOptions is only populated for the active player's socket.
 type TrackPreparePayload struct {
 	PrepareID    string        `json:"prepareId"`
 	TrackID      string        `json:"trackId"`
-	LiveKitURL   string        `json:"livekitUrl"`
-	LiveKitToken string        `json:"livekitToken"`
-	RoomName     string        `json:"roomName"`
+	MediaURL     string        `json:"mediaUrl"`
 	DurationMs   int64         `json:"durationMs"`
 	GuessOptions *GuessOptions `json:"guessOptions,omitempty"`
 }
@@ -137,15 +145,20 @@ type GuessOptions struct {
 	Artists []string `json:"artists"`
 }
 
-// TrackStartPayload marks the point where the server begins feeding the
-// already-subscribed LiveKit track. It intentionally has no client clock.
+// TrackStartPayload fixes the shared playback start on the server clock.
+// Every client plays its local copy at position
+// (serverNow - StartAtServerMs) modulo the track length, so clients that
+// join or finish downloading late still play in sync.
 type TrackStartPayload struct {
-	PrepareID string `json:"prepareId"`
+	PrepareID       string `json:"prepareId"`
+	StartAtServerMs int64  `json:"startAtServerMs"`
 }
 
-// TrackStopPayload tells clients to fade out and stop.
+// TrackStopPayload tells clients to fade out, stop, and discard their copy
+// of the track.
 type TrackStopPayload struct {
-	FadeMs int `json:"fadeMs"`
+	PrepareID string `json:"prepareId"`
+	FadeMs    int    `json:"fadeMs"`
 }
 
 func newEnvelope(msgType string, payload any) (Envelope, error) {

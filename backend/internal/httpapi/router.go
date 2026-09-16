@@ -24,6 +24,7 @@ func (a *API) Router() http.Handler {
 		})
 
 		r.Get("/config", a.requireAppScope(a.handleConfig))
+		r.Get("/media/{token}", a.requireAppScope(a.handleMedia))
 
 		r.Route("/games", func(r chi.Router) {
 			r.Post("/", a.requireAppScope(a.handleCreateGame))
