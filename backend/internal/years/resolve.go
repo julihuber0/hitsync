@@ -9,48 +9,48 @@ import (
 
 // Source labels shown on the reveal card (§9.4).
 const (
-	SourceDiscogs = "Discogs"
-	SourceLibrary = "Library"
-	SourceBoth    = "Both"
-	SourceManual  = "Manual"
+	SourceMusicBrainz = "MusicBrainz"
+	SourceLibrary     = "Library"
+	SourceBoth        = "Both"
+	SourceManual      = "Manual"
 )
 
-// DiscogsResolver is the subset of *discogs.Client used here, so tests can
+// MBResolver is the subset of *musicbrainz.Client used here, so tests can
 // inject a fake without hitting the network.
-type DiscogsResolver interface {
-	Resolve(ctx context.Context, title, artist string) (*DiscogsResult, error)
+type MBResolver interface {
+	Resolve(ctx context.Context, title, artist string) (*MBResult, error)
 }
 
-// DiscogsResult mirrors discogs.Result to avoid an import cycle; the
-// concrete client returns a compatible type.
-type DiscogsResult struct {
+// MBResult mirrors musicbrainz.Result to avoid an import cycle; the concrete
+// client returns a compatible type.
+type MBResult struct {
 	Year   int
 	Source string
 }
 
-// Resolver orchestrates on-demand Discogs year lookups with an in-memory
+// Resolver orchestrates on-demand MusicBrainz year lookups with an in-memory
 // cache and per-key request de-duplication (§9.5).
 type Resolver struct {
-	discogs DiscogsResolver
+	mb      MBResolver
 	enabled bool
 	cache   *lruCache
 	sf      singleflight.Group
 }
 
-// NewResolver creates a Resolver. If enabled is false, Discogs is never
+// NewResolver creates a Resolver. If enabled is false, MusicBrainz is never
 // queried and Navidrome years are used exclusively.
-func NewResolver(discogs DiscogsResolver, enabled bool, cacheEntries int, cacheTTL time.Duration) *Resolver {
+func NewResolver(mb MBResolver, enabled bool, cacheEntries int, cacheTTL time.Duration) *Resolver {
 	return &Resolver{
-		discogs: discogs,
+		mb:      mb,
 		enabled: enabled,
 		cache:   newLRUCache(cacheEntries, cacheTTL),
 	}
 }
 
-// ResolveDiscogsYear returns the Discogs year for a (title, artist) pair,
-// using the in-memory cache (including negative results) and collapsing
-// concurrent identical lookups into one upstream call.
-func (r *Resolver) ResolveDiscogsYear(ctx context.Context, title, artist string) (year int, found bool, err error) {
+// ResolveMusicBrainzYear returns the MusicBrainz year for a (title, artist)
+// pair, using the in-memory cache (including negative results) and
+// collapsing concurrent identical lookups into one upstream call.
+func (r *Resolver) ResolveMusicBrainzYear(ctx context.Context, title, artist string) (year int, found bool, err error) {
 	if !r.enabled {
 		return 0, false, nil
 	}
@@ -64,7 +64,7 @@ func (r *Resolver) ResolveDiscogsYear(ctx context.Context, title, artist string)
 		if entry, ok := r.cache.get(key); ok {
 			return entry, nil
 		}
-		res, err := r.discogs.Resolve(ctx, title, artist)
+		res, err := r.mb.Resolve(ctx, title, artist)
 		if err != nil {
 			return nil, err
 		}
@@ -90,33 +90,33 @@ func (r *Resolver) CacheLen() int {
 }
 
 // Combine implements the earliest-wins combiner from §9.4. overrideYear,
-// navidromeYear and discogsYear are nil when absent. maxBackdate is
+// navidromeYear and mbYear are nil when absent. maxBackdate is
 // YEAR_MAX_BACKDATE (0 disables the guard).
-func Combine(overrideYear, navidromeYear, discogsYear *int, maxBackdate int) (year int, source string, ok bool) {
+func Combine(overrideYear, navidromeYear, mbYear *int, maxBackdate int) (year int, source string, ok bool) {
 	if overrideYear != nil {
 		return *overrideYear, SourceManual, true
 	}
 
-	nd, dg := navidromeYear, discogsYear
+	nd, mb := navidromeYear, mbYear
 
-	if maxBackdate > 0 && nd != nil && dg != nil && (*nd-*dg) > maxBackdate {
-		dg = nil
+	if maxBackdate > 0 && nd != nil && mb != nil && (*nd-*mb) > maxBackdate {
+		mb = nil
 	}
 
 	switch {
-	case nd != nil && dg != nil:
+	case nd != nil && mb != nil:
 		switch {
-		case *nd == *dg:
+		case *nd == *mb:
 			return *nd, SourceBoth, true
-		case *dg < *nd:
-			return *dg, SourceDiscogs, true
+		case *mb < *nd:
+			return *mb, SourceMusicBrainz, true
 		default:
 			return *nd, SourceLibrary, true
 		}
 	case nd != nil:
 		return *nd, SourceLibrary, true
-	case dg != nil:
-		return *dg, SourceDiscogs, true
+	case mb != nil:
+		return *mb, SourceMusicBrainz, true
 	default:
 		return 0, "", false
 	}

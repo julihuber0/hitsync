@@ -52,10 +52,10 @@ func NewTrackSource(st *store.Store, resolver *years.Resolver, freshness Library
 // DrawAndResolve draws a random eligible track not in excludeIDs and
 // resolves its gameplay year, retrying up to 5 times if a candidate has no
 // year from either source (§9.5 point 5). dbCtx bounds the (fast) database
-// query; discogsCtx bounds the Discogs lookup specifically — pass an
+// query; mbCtx bounds the MusicBrainz lookup specifically — pass an
 // already-expired context to force an immediate fall back to the Navidrome
 // year alone (§9.5 point 4) without also aborting the database query.
-func (ts *TrackSource) DrawAndResolve(dbCtx, discogsCtx context.Context, excludeIDs []string) (*Candidate, error) {
+func (ts *TrackSource) DrawAndResolve(dbCtx, mbCtx context.Context, excludeIDs []string) (*Candidate, error) {
 	exclude := append([]string(nil), excludeIDs...)
 
 	for attempt := 0; attempt < 5; attempt++ {
@@ -69,7 +69,7 @@ func (ts *TrackSource) DrawAndResolve(dbCtx, discogsCtx context.Context, exclude
 		tr := tracks[0]
 		exclude = append(exclude, tr.ID)
 
-		cand, ok, err := ts.resolveTrack(dbCtx, discogsCtx, tr)
+		cand, ok, err := ts.resolveTrack(dbCtx, mbCtx, tr)
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +81,7 @@ func (ts *TrackSource) DrawAndResolve(dbCtx, discogsCtx context.Context, exclude
 	return nil, ErrPoolExhausted
 }
 
-func (ts *TrackSource) resolveTrack(dbCtx, discogsCtx context.Context, tr store.Track) (*Candidate, bool, error) {
+func (ts *TrackSource) resolveTrack(dbCtx, mbCtx context.Context, tr store.Track) (*Candidate, bool, error) {
 	var overrideYear *int
 	override, err := ts.st.GetYearOverride(dbCtx, tr.ID)
 	if err != nil {
@@ -91,15 +91,15 @@ func (ts *TrackSource) resolveTrack(dbCtx, discogsCtx context.Context, tr store.
 		overrideYear = &override.Year
 	}
 
-	var discogsYearPtr *int
-	discogsYear, discogsFound, err := ts.resolver.ResolveDiscogsYear(discogsCtx, tr.Title, tr.Artist)
-	if err == nil && discogsFound {
-		discogsYearPtr = &discogsYear
+	var mbYearPtr *int
+	mbYear, mbFound, err := ts.resolver.ResolveMusicBrainzYear(mbCtx, tr.Title, tr.Artist)
+	if err == nil && mbFound {
+		mbYearPtr = &mbYear
 	}
-	// A resolution error (including an expired discogsCtx) is treated as
-	// "Discogs absent" rather than a hard failure.
+	// A resolution error (including an expired mbCtx) is treated as
+	// "MusicBrainz absent" rather than a hard failure.
 
-	year, source, ok := years.Combine(overrideYear, tr.NavidromeYear, discogsYearPtr, ts.maxBackdate)
+	year, source, ok := years.Combine(overrideYear, tr.NavidromeYear, mbYearPtr, ts.maxBackdate)
 	if !ok {
 		return nil, false, nil
 	}

@@ -1,7 +1,7 @@
 // Package years resolves gameplay release years by combining Navidrome tags
-// with Discogs lookups (§9.2–9.5 of the spec), and provides the shared
+// with MusicBrainz lookups (§9.2–9.5 of the spec), and provides the shared
 // title/artist normalisation rules used for both the tracks table and
-// Discogs lookup keys.
+// MusicBrainz lookup keys.
 package years
 
 import (

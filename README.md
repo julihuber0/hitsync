@@ -66,7 +66,7 @@ signalling endpoint.
 | `AUDIO_FORMAT`, `AUDIO_BITRATE` | no | Navidrome’s server-side transcode request, defaults `mp3` / `192` |
 | `MEDIA_CACHE_DIR`, `MEDIA_CACHE_MAX_BYTES` | no | Worker-only LRU cache, default `/cache` / 2 GiB |
 
-All other game, database, and Discogs settings remain documented in
+All other game, database, and MusicBrainz settings remain documented in
 [`.env.example`](.env.example). Generate independent secrets with:
 
 ```sh

@@ -15,11 +15,11 @@ import (
 
 	"github.com/julianhuber/hitsync/backend/internal/broadcast"
 	"github.com/julianhuber/hitsync/backend/internal/config"
-	"github.com/julianhuber/hitsync/backend/internal/discogs"
 	"github.com/julianhuber/hitsync/backend/internal/gamesvc"
 	"github.com/julianhuber/hitsync/backend/internal/httpapi"
 	"github.com/julianhuber/hitsync/backend/internal/library"
 	"github.com/julianhuber/hitsync/backend/internal/livekit"
+	"github.com/julianhuber/hitsync/backend/internal/musicbrainz"
 	"github.com/julianhuber/hitsync/backend/internal/navidrome"
 	"github.com/julianhuber/hitsync/backend/internal/store"
 	"github.com/julianhuber/hitsync/backend/internal/tokens"
@@ -60,12 +60,12 @@ func main() {
 	syncer := library.New(nav, st, log)
 	go syncer.RunPeriodic(ctx, cfg.LibrarySyncInterval)
 
-	discogsClient := discogs.New(discogs.Config{
-		BaseURL:    cfg.DiscogsBaseURL,
-		Token:      cfg.DiscogsToken,
-		RatePerSec: cfg.DiscogsRatePerSec,
+	mbClient := musicbrainz.New(musicbrainz.Config{
+		BaseURL:    cfg.MusicBrainzBaseURL,
+		Contact:    cfg.MusicBrainzContact,
+		RatePerSec: cfg.MusicBrainzRatePerSec,
 	})
-	resolver := years.NewResolver(discogs.YearsAdapter{Client: discogsClient}, cfg.DiscogsEnabled, cfg.DiscogsCacheEntries, cfg.DiscogsCacheTTL)
+	resolver := years.NewResolver(musicbrainz.YearsAdapter{Client: mbClient}, cfg.MusicBrainzEnabled, cfg.MusicBrainzCacheEntries, cfg.MusicBrainzCacheTTL)
 
 	trackSource := gamesvc.NewTrackSource(st, resolver, syncer, cfg.TrackMinDuration, cfg.TrackMaxDuration, cfg.YearMaxBackdate)
 
@@ -90,7 +90,7 @@ func main() {
 	manager.RehydrateFromSnapshots(ctx)
 	go manager.RunJanitor(ctx)
 
-	api := httpapi.New(cfg, issuer, st, manager, syncer, resolver, discogsClient, nav, log)
+	api := httpapi.New(cfg, issuer, st, manager, syncer, resolver, mbClient, nav, log)
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
@@ -159,18 +159,18 @@ func runResolveYearCLI(title, artist string) {
 		fmt.Fprintln(os.Stderr, "config error:", err)
 		os.Exit(1)
 	}
-	discogsClient := discogs.New(discogs.Config{
-		BaseURL: cfg.DiscogsBaseURL, Token: cfg.DiscogsToken,
-		RatePerSec: cfg.DiscogsRatePerSec,
+	mbClient := musicbrainz.New(musicbrainz.Config{
+		BaseURL: cfg.MusicBrainzBaseURL, Contact: cfg.MusicBrainzContact,
+		RatePerSec: cfg.MusicBrainzRatePerSec,
 	})
-	res, err := discogsClient.Resolve(context.Background(), title, artist)
+	res, err := mbClient.Resolve(context.Background(), title, artist)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "resolve error:", err)
 		os.Exit(1)
 	}
 	if res == nil {
-		fmt.Printf("No Discogs match for %q by %q\n", title, artist)
+		fmt.Printf("No MusicBrainz match for %q by %q\n", title, artist)
 		return
 	}
-	fmt.Printf("Title: %s\nArtist: %s\nDiscogs year: %d\nSource: %s\n", title, artist, res.Year, res.Source)
+	fmt.Printf("Title: %s\nArtist: %s\nMusicBrainz year: %d\nSource: %s\n", title, artist, res.Year, res.Source)
 }
