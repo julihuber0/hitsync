@@ -44,7 +44,8 @@ export class SyncedAudioPlayer {
     this.element = new Audio();
     this.element.loop = true;
     this.element.preload = "auto";
-    this.element.volume = this.effectiveVolume();
+    this.element.volume = this.volume;
+    this.element.muted = this.muted;
   }
 
   private static loadVolume(): number {
@@ -159,13 +160,15 @@ export class SyncedAudioPlayer {
   setVolume(v: number): void {
     this.volume = Math.min(1, Math.max(0, v));
     localStorage.setItem("hs_volume", String(this.volume));
-    if (!this.fadeTimer) this.element.volume = this.effectiveVolume();
+    if (!this.fadeTimer) this.element.volume = this.volume;
   }
   setMuted(muted: boolean): void {
     this.muted = muted;
     localStorage.setItem("hs_muted", String(muted));
-    // Muting never pauses, so a muted client keeps its place in the song.
-    if (!this.fadeTimer) this.element.volume = this.effectiveVolume();
+    // Mute through the element's muted flag, not volume: iOS ignores volume
+    // changes on media elements. Muting never pauses, so a muted client keeps
+    // its place in the song.
+    this.element.muted = muted;
   }
   getVolume(): number { return this.volume; }
   isMuted(): boolean { return this.muted; }
@@ -201,7 +204,7 @@ export class SyncedAudioPlayer {
     const current = this.current;
     if (!current || current.startAtServerMs === null) return;
     this.clearPlaybackTimers();
-    this.element.volume = this.effectiveVolume();
+    this.element.volume = this.volume;
 
     const position = this.expectedPosition(current.startAtServerMs);
     if (position < 0) {
@@ -232,10 +235,6 @@ export class SyncedAudioPlayer {
     return Number.isFinite(d) && d > 0 ? d : this.current?.fallbackDurationSec ?? NaN;
   }
 
-  private effectiveVolume(): number {
-    return this.muted ? 0 : this.volume;
-  }
-
   private clearPlaybackTimers(): void {
     if (this.startTimer) clearTimeout(this.startTimer);
     if (this.fadeTimer) clearInterval(this.fadeTimer);
@@ -254,7 +253,7 @@ export class SyncedAudioPlayer {
       this.element.load();
       if (current.trackId !== keepTrackId && current.trackId !== this.preloadTrackId) this.cache.release(current.trackId);
     }
-    this.element.volume = this.effectiveVolume();
+    this.element.volume = this.volume;
     this.setState("idle");
   }
 

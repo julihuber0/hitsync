@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AudioLines, Flag, SkipForward, Volume2, VolumeX, Wifi, WifiOff } from "lucide-react";
+import { Flag, SkipForward, Volume2, VolumeX, Wifi, WifiOff } from "lucide-react";
 import { useGameStore } from "../store/gameStore";
 import { audioPlayer } from "../audio/instance";
 import CountdownRing from "./CountdownRing";
@@ -20,6 +20,7 @@ export default function TopBar() {
   const state = useGameStore((s) => s.state)!;
   const socket = useGameStore((s) => s.socket);
   const connected = useGameStore((s) => s.connected);
+  const playing = useGameStore((s) => s.audioState === "playing");
   const [volume, setVolume] = useState(audioPlayer.getVolume());
   const [muted, setMuted] = useState(audioPlayer.isMuted());
 
@@ -31,9 +32,7 @@ export default function TopBar() {
   return (
     <header className="surface flex items-center gap-3 rounded-2xl px-3 py-2.5 sm:gap-4 sm:px-4">
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <span className="brand-mark hidden h-9 w-9 shrink-0 sm:flex">
-          <AudioLines size={18} strokeWidth={2.25} />
-        </span>
+        <NowPlaying playing={playing} />
         <div className="min-w-0">
           <div className="eyebrow tabular-nums">{t("board.turn", { number: state.turnNumber })}</div>
           <div className="flex items-center gap-2 truncate text-sm font-semibold">
@@ -110,5 +109,29 @@ export default function TopBar() {
         )}
       </div>
     </header>
+  );
+}
+
+/** The brand mark as a small equalizer that moves while the song plays. */
+function NowPlaying({ playing }: { playing: boolean }) {
+  return (
+    <span
+      className={`brand-mark hidden h-9 w-9 shrink-0 items-end gap-[3px] pb-2.5 sm:flex ${playing ? "" : "opacity-80"}`}
+      aria-hidden
+    >
+      {[0.45, 0.85, 1, 0.65, 0.4].map((height, i) => (
+        <span
+          key={i}
+          className={`w-[3px] origin-bottom rounded-full bg-white ${playing ? "animate-equalizer" : ""}`}
+          style={{
+            height: `${height * 16}px`,
+            animationDelay: `${i * -0.18}s`,
+            animationDuration: `${0.9 + (i % 3) * 0.2}s`,
+            transform: playing ? undefined : "scaleY(0.4)",
+            transition: "transform 0.4s ease",
+          }}
+        />
+      ))}
+    </span>
   );
 }

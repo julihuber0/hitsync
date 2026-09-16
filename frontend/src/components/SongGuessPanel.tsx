@@ -55,20 +55,18 @@ export default function SongGuessPanel({ fields, initial, onChange }: Props) {
   ].filter((input) => fields[input.key]);
 
   return (
-    <div className="w-full max-w-xl rounded-2xl border border-white/[0.07] bg-black/20 p-4 sm:p-5">
-      <div className="mb-4 flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gold/25 bg-gold/10 text-gold">
-          <Coins size={17} />
-        </span>
-        <div>
-          <h3 className="text-sm font-semibold">{t("board.guessTitle")}</h3>
-          <p className="mt-0.5 text-xs leading-relaxed text-fg/50">{t("board.guessHint")}</p>
-        </div>
+    <div className="w-full rounded-2xl border border-white/[0.07] bg-black/20 p-3">
+      <div className="mb-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 px-0.5">
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+          <Coins size={14} className="shrink-0 self-center text-gold" />
+          {t("board.guessTitle")}
+        </h3>
+        <p className="text-xs text-fg/45">{t("board.guessHint")}</p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className={`grid grid-cols-2 gap-2 ${COLUMNS[inputs.length] ?? ""}`}>
         {inputs.map(({ key, label, year }) => (
-          <label key={key} className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-fg/55">{label}</span>
+          <label key={key} className="flex min-w-0 flex-col gap-1">
+            <span className="px-0.5 text-[11px] font-medium text-fg/50">{label}</span>
             <input
               value={guess[key]}
               maxLength={year ? 4 : 200}
@@ -76,7 +74,7 @@ export default function SongGuessPanel({ fields, initial, onChange }: Props) {
               autoComplete="off"
               onChange={(e) => update(key, year ? e.target.value.replace(/\D/g, "") : e.target.value)}
               onBlur={flush}
-              className={`input h-11 text-sm ${year ? "tabular-nums tracking-wider" : ""}`}
+              className={`input h-10 px-3 text-sm ${year ? "tabular-nums tracking-wider" : ""}`}
             />
           </label>
         ))}
@@ -84,3 +82,11 @@ export default function SongGuessPanel({ fields, initial, onChange }: Props) {
     </div>
   );
 }
+
+// Static class names so Tailwind generates them.
+const COLUMNS: Record<number, string> = {
+  1: "lg:grid-cols-1",
+  2: "lg:grid-cols-2",
+  3: "lg:grid-cols-3",
+  4: "lg:grid-cols-4",
+};

@@ -21,23 +21,23 @@ export default function LiveGuess({ player, fields, guess }: Props) {
   const empty = !guess || rows.every((row) => !guess[row.key].trim());
 
   return (
-    <div className="surface w-full max-w-xl rounded-2xl p-4">
-      <div className="mb-3 flex items-center gap-2.5">
-        <Avatar name={player.name} colour={player.colour} size={24} />
+    <div className="surface flex max-w-full flex-wrap items-center gap-x-4 gap-y-1.5 rounded-2xl px-3.5 py-2">
+      <span className="flex min-w-0 items-center gap-2">
+        <Coins size={14} className="shrink-0 text-gold" />
+        <Avatar name={player.name} colour={player.colour} size={20} />
         <span className="truncate text-sm font-semibold">{t("board.liveGuessBy", { name: player.name })}</span>
-        <Coins size={14} className="ml-auto shrink-0 text-gold" />
-      </div>
+      </span>
       {empty ? (
-        <p className="flex items-center gap-2 text-sm text-fg/40">
+        <span className="flex items-center gap-2 text-sm text-fg/40">
           <TypingDots />
           {t("board.liveGuessEmpty")}
-        </p>
+        </span>
       ) : (
-        <dl className="grid gap-2 sm:grid-cols-2">
+        <dl className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
           {rows.map(({ key, label }) => (
-            <div key={key} className="min-w-0 rounded-xl border border-white/6 bg-black/20 px-3 py-2">
+            <div key={key} className="flex min-w-0 items-baseline gap-1.5">
               <dt className="text-[11px] font-medium text-fg/45">{label}</dt>
-              <dd className={`truncate text-sm font-medium ${guess![key] ? "text-fg" : "text-fg/25"}`}>{guess![key] || "—"}</dd>
+              <dd className={`max-w-[16rem] truncate text-sm font-medium ${guess![key] ? "text-fg" : "text-fg/25"}`}>{guess![key] || "—"}</dd>
             </div>
           ))}
         </dl>

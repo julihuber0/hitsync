@@ -5,7 +5,7 @@ import type { CardView } from "../ws/protocol";
 interface Props {
   timeline: CardView[];
   mode: "view" | "place" | "challenge";
-  size?: "default" | "large";
+  size?: "small" | "default" | "large";
   selectedSlot?: number | null;
   onSelectSlot?: (slot: number) => void;
   takenSlots?: number[];
@@ -33,7 +33,9 @@ export default function Timeline({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
-  const compact = size === "default" && timeline.length >= 8;
+  // Long timelines shrink to the small cards regardless of the requested size,
+  // except for the player's own (large) timeline.
+  const tier = size === "large" ? "large" : size === "small" || timeline.length >= 8 ? "small" : "default";
 
   useEffect(() => {
     selectedRef.current?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
@@ -89,7 +91,11 @@ export default function Timeline({
     </>
   );
 
-  const cardHeight = compact ? "h-[88px]" : size === "large" ? "h-36 sm:h-40" : "h-28";
+  const cardHeight = tier === "small" ? "h-[84px]" : tier === "large" ? "h-32" : "h-28";
+  const slotWidth =
+    tier === "small"
+      ? { base: "w-7", hover: "hover:w-9", selected: "w-10" }
+      : { base: "w-9", hover: "hover:w-11", selected: "w-12" };
 
   const renderSlot = (slot: number) => {
     const isSelected = selectedSlot === slot;
@@ -117,15 +123,17 @@ export default function Timeline({
         disabled={!clickable}
         onClick={() => clickable && onSelectSlot?.(slot)}
         aria-label={`slot-${slot}`}
-        className={`group/slot relative flex w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ease-game ${cardHeight} ${
+        className={`group/slot relative flex shrink-0 items-center justify-center rounded-xl transition-all duration-200 ease-game ${cardHeight} ${
+          isSelected ? slotWidth.selected : slotWidth.base
+        } ${
           isSelected
-            ? "w-12 bg-linear-to-b from-accent/40 to-accent-end/30 shadow-glow ring-2 ring-accent"
+            ? "bg-linear-to-b from-accent/40 to-accent-end/30 shadow-glow ring-2 ring-accent"
             : isTaken
               ? "cursor-not-allowed border border-white/10 bg-white/4"
               : isDisabled
                 ? "cursor-not-allowed border border-transparent bg-white/1.5"
                 : clickable
-                  ? "border border-dashed border-white/15 bg-white/2 hover:w-11 hover:border-accent/60 hover:bg-accent/10"
+                  ? `border border-dashed border-white/15 bg-white/2 ${slotWidth.hover} hover:border-accent/60 hover:bg-accent/10`
                   : "border-transparent bg-transparent"
         }`}
       >
@@ -141,14 +149,14 @@ export default function Timeline({
   };
 
   return (
-    <div ref={containerRef} className="fade-edges-x w-full overflow-x-auto pb-3 pt-3">
+    <div ref={containerRef} className={`fade-edges-x scrollbar-on-hover w-full overflow-x-auto ${tier === "small" ? "pb-1.5 pt-2" : "pb-2 pt-2.5"}`}>
       <div className="mx-auto flex w-fit min-w-min items-center gap-1.5 px-5">
         {renderSlot(0)}
         {timeline.map((card, i) => (
           <div key={card.trackId + i} className="flex items-center gap-1.5">
             <div
               className={`relative flex shrink-0 flex-col items-center justify-center overflow-hidden rounded-2xl border bg-linear-to-b from-elevated to-surface px-2 text-center shadow-card transition-all duration-200 ease-game ${
-                compact ? "w-[68px]" : size === "large" ? "w-28 sm:w-32" : "w-24"
+                tier === "small" ? "w-16" : tier === "large" ? "w-28" : "w-24"
               } ${cardHeight} ${
                 highlightSlot === i && highlightCorrect === true
                   ? "border-success/70 shadow-[0_0_24px_-4px_rgba(52,211,153,0.5)]"
@@ -160,20 +168,20 @@ export default function Timeline({
               <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/25 to-transparent" />
               <span
                 className={`brand-text font-bold tabular-nums tracking-tight ${
-                  compact ? "text-lg" : size === "large" ? "text-3xl" : "text-2xl"
+                  tier === "small" ? "text-lg" : tier === "large" ? "text-3xl" : "text-2xl"
                 }`}
               >
                 {card.year}
               </span>
               <span
-                className={`mt-1.5 line-clamp-2 flex min-h-[2.5em] items-center font-medium leading-tight text-fg/90 ${
-                  compact ? "text-[9px]" : size === "large" ? "text-xs" : "text-[11px]"
+                className={`line-clamp-2 flex min-h-[2.5em] items-center font-medium leading-tight text-fg/90 ${
+                  tier === "small" ? "mt-1 text-[9px]" : tier === "large" ? "mt-1.5 text-xs" : "mt-1.5 text-[11px]"
                 }`}
               >
                 {card.title}
               </span>
-              {!compact && (
-                <span className={`mt-0.5 line-clamp-1 text-fg/45 ${size === "large" ? "text-[11px]" : "text-[10px]"}`}>{card.artist}</span>
+              {tier !== "small" && (
+                <span className={`mt-0.5 line-clamp-1 text-fg/45 ${tier === "large" ? "text-[11px]" : "text-[10px]"}`}>{card.artist}</span>
               )}
             </div>
             {renderSlot(i + 1)}
