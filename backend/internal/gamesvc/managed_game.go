@@ -10,10 +10,10 @@ import (
 	"github.com/julianhuber/hitsync/backend/internal/ws"
 )
 
-// pendingSongGuess is the active player's optional "Name that tune" answer,
-// evaluated at reveal time (§8.6).
+// pendingSongGuess is the active player's latest title/artist guess for the
+// token bonus, checked at reveal time (§8.6).
 type pendingSongGuess struct {
-	titleGuess, artistGuess string
+	title, artist string
 }
 
 // ManagedGame owns one game's authoritative state, mutated only from its own

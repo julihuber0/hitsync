@@ -1,56 +1,79 @@
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { GuessOptions } from "../ws/protocol";
+import type { SongGuess } from "../ws/protocol";
+
+// Typing sends the guess after a short pause; leaving a field sends it at once.
+const SEND_DELAY_MS = 400;
 
 interface Props {
-  options: GuessOptions;
-  titleGuess: string | null;
-  artistGuess: string | null;
-  onSelectTitle: (title: string) => void;
-  onSelectArtist: (artist: string) => void;
+  /** The guess the server already holds, e.g. after a reconnect. */
+  initial: SongGuess | null;
+  onChange: (title: string, artist: string) => void;
 }
 
-export default function SongGuessPanel({ options, titleGuess, artistGuess, onSelectTitle, onSelectArtist }: Props) {
+/**
+ * Free-text "Name that tune" guess for the active player. It can be edited
+ * until the reveal, where the server checks it: title and artist both right
+ * earns a token.
+ */
+export default function SongGuessPanel({ initial, onChange }: Props) {
   const { t } = useTranslation();
-  return (
-    <div className="card-surface p-4 flex flex-col gap-3">
-      <h3 className="text-sm font-semibold text-neon/70">{t("board.guessTitle")}</h3>
-      <GuessGroup label={t("board.guessTitleLabel")} choices={options.titles} selected={titleGuess} onSelect={onSelectTitle} />
-      <GuessGroup label={t("board.guessArtistLabel")} choices={options.artists} selected={artistGuess} onSelect={onSelectArtist} />
-    </div>
-  );
-}
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [artist, setArtist] = useState(initial?.artist ?? "");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef({ title, artist });
 
-function GuessGroup({
-  label,
-  choices,
-  selected,
-  onSelect,
-}: {
-  label: string;
-  choices: string[];
-  selected: string | null;
-  onSelect: (v: string) => void;
-}) {
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+
+  const send = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    onChange(latest.current.title, latest.current.artist);
+  };
+  const update = (next: { title: string; artist: string }) => {
+    latest.current = next;
+    setTitle(next.title);
+    setArtist(next.artist);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(send, SEND_DELAY_MS);
+  };
+  const flush = () => {
+    if (timer.current) send();
+  };
+
+  const inputClass =
+    "neon-focus w-full bg-black/30 border border-border rounded-lg py-2 px-3 text-sm outline-none focus:border-accent transition-colors";
+
   return (
-    <div>
-      <div className="text-xs text-neon/50 mb-1.5">{label}</div>
-      <div className="grid grid-cols-2 gap-1.5">
-        {choices.map((choice) => (
-          <button
-            key={choice}
-            type="button"
-            onClick={() => onSelect(choice)}
-            className={`text-xs px-2 py-1.5 rounded-md border transition-all duration-150 truncate ${
-              selected === choice
-                ? "bg-accent/30 border-accent shadow-neon-sm"
-                : "bg-white/5 border-white/10 hover:border-accent/40"
-            }`}
-            title={choice}
-          >
-            {choice}
-          </button>
-        ))}
+    <div className="card-surface w-full max-w-md p-4 flex flex-col gap-3">
+      <div>
+        <h3 className="text-sm font-semibold text-neon/70">{t("board.guessTitle")}</h3>
+        <p className="text-xs text-neon/45">{t("board.guessHint")}</p>
       </div>
+      <label className="flex flex-col gap-1 text-xs text-neon/50">
+        {t("board.guessTitleLabel")}
+        <input
+          value={title}
+          maxLength={200}
+          autoComplete="off"
+          onChange={(e) => update({ title: e.target.value, artist })}
+          onBlur={flush}
+          className={inputClass}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-xs text-neon/50">
+        {t("board.guessArtistLabel")}
+        <input
+          value={artist}
+          maxLength={200}
+          autoComplete="off"
+          onChange={(e) => update({ title, artist: e.target.value })}
+          onBlur={flush}
+          className={inputClass}
+        />
+      </label>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import "time"
 type Config struct {
 	MinPlayers, MaxPlayers, MaxConcurrentGames int
 	DefaultTargetCards, DefaultStartTokens     int
-	MaxTokens                                  int
+	DefaultMaxTokens                           int
 	EnableSongGuess                            bool
 
 	TurnPlacementTimeout         time.Duration

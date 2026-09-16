@@ -27,10 +27,9 @@ const stopFadeMs = 400
 // activeTrack is the current turn's track, kept so a reconnecting client can
 // be brought back into the same playback (§13.4).
 type activeTrack struct {
-	prepareID    string
-	trackID      string
-	durationMs   int64
-	guessOptions *ws.GuessOptions
+	prepareID  string
+	trackID    string
+	durationMs int64
 	// startAtServerMs is 0 until PLACING begins.
 	startAtServerMs int64
 }
@@ -55,11 +54,7 @@ func (mg *ManagedGame) mediaURL(trackID string) (string, bool) {
 
 func (mg *ManagedGame) sendTrackPrepare(c *ws.Conn, mediaURL string) {
 	t := mg.track
-	payload := ws.TrackPreparePayload{PrepareID: t.prepareID, TrackID: t.trackID, MediaURL: mediaURL, DurationMs: t.durationMs}
-	if mg.g.Turn != nil && c.PlayerID == mg.g.Turn.ActivePlayerID {
-		payload.GuessOptions = t.guessOptions
-	}
-	c.Send(ws.TypeTrackPrepare, payload)
+	c.Send(ws.TypeTrackPrepare, ws.TrackPreparePayload{PrepareID: t.prepareID, TrackID: t.trackID, MediaURL: mediaURL, DurationMs: t.durationMs})
 }
 
 func (mg *ManagedGame) sendTrackStart(c *ws.Conn) {

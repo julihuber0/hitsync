@@ -20,6 +20,7 @@ const (
 	TypeUpdateSettings   = "update_settings"
 	TypeStartGame        = "start_game"
 	TypePlaceCard        = "place_card"
+	TypeSongGuess        = "song_guess"
 	TypePlacePreview     = "place_preview"
 	TypeClaimSteal       = "claim_steal"
 	TypeChallenge        = "challenge"
@@ -72,14 +73,21 @@ type ReadyPayload struct {
 type UpdateSettingsPayload struct {
 	TargetCards     *int  `json:"targetCards,omitempty"`
 	StartTokens     *int  `json:"startTokens,omitempty"`
+	MaxTokens       *int  `json:"maxTokens,omitempty"`
 	EnableSongGuess *bool `json:"enableSongGuess,omitempty"`
 }
 
 // PlaceCardPayload is the active player's placement submission.
 type PlaceCardPayload struct {
-	SlotIndex   int     `json:"slotIndex"`
-	TitleGuess  *string `json:"titleGuess,omitempty"`
-	ArtistGuess *string `json:"artistGuess,omitempty"`
+	SlotIndex int `json:"slotIndex"`
+}
+
+// SongGuessPayload is the active player's title/artist guess for the token
+// bonus. It replaces any earlier guess this turn and is checked at the
+// reveal (§8.6).
+type SongGuessPayload struct {
+	Title  string `json:"title"`
+	Artist string `json:"artist"`
 }
 
 // PlacePreviewPayload shares the active player's revisable intended
@@ -131,19 +139,11 @@ type TrackPreloadPayload struct {
 
 // TrackPreparePayload starts a turn's PREPARING phase: clients download the
 // track (or reuse their preloaded copy) and answer with TypeReady.
-// GuessOptions is only populated for the active player's socket.
 type TrackPreparePayload struct {
-	PrepareID    string        `json:"prepareId"`
-	TrackID      string        `json:"trackId"`
-	MediaURL     string        `json:"mediaUrl"`
-	DurationMs   int64         `json:"durationMs"`
-	GuessOptions *GuessOptions `json:"guessOptions,omitempty"`
-}
-
-// GuessOptions is the song-guess multiple-choice panel content (§8.6).
-type GuessOptions struct {
-	Titles  []string `json:"titles"`
-	Artists []string `json:"artists"`
+	PrepareID  string `json:"prepareId"`
+	TrackID    string `json:"trackId"`
+	MediaURL   string `json:"mediaUrl"`
+	DurationMs int64  `json:"durationMs"`
 }
 
 // TrackStartPayload fixes the shared playback start on the server clock.

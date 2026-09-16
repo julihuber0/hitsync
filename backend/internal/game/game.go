@@ -153,23 +153,51 @@ func (g *Game) transferHost() {
 	}
 }
 
+// MaxTokensLimit bounds the host-configurable token cap.
+const MaxTokensLimit = 10
+
+// SettingsUpdate carries lobby setting changes; nil fields are left as they
+// are.
+type SettingsUpdate struct {
+	TargetCards     *int
+	StartTokens     *int
+	MaxTokens       *int
+	EnableSongGuess *bool
+}
+
 // UpdateSettings applies lobby setting changes (§13.1 update_settings), host
-// only, lobby only.
-func (g *Game) UpdateSettings(playerID string, targetCards, startTokens *int, enableSongGuess *bool) error {
+// only. Lowering MaxTokens below StartTokens lowers StartTokens with it.
+// Every player's tokens follow StartTokens while the game is in the lobby.
+func (g *Game) UpdateSettings(playerID string, u SettingsUpdate) error {
 	if playerID != g.HostID {
 		return ErrNotHost
 	}
 	if g.Phase != PhaseLobby {
 		return ErrWrongPhase
 	}
-	if targetCards != nil {
-		g.Settings.TargetCards = *targetCards
+	next := g.Settings
+	if u.TargetCards != nil {
+		next.TargetCards = *u.TargetCards
 	}
-	if startTokens != nil {
-		g.Settings.StartTokens = *startTokens
+	if u.MaxTokens != nil {
+		next.MaxTokens = *u.MaxTokens
+		if u.StartTokens == nil && next.StartTokens > next.MaxTokens {
+			next.StartTokens = next.MaxTokens
+		}
 	}
-	if enableSongGuess != nil {
-		g.Settings.EnableSongGuess = *enableSongGuess
+	if u.StartTokens != nil {
+		next.StartTokens = *u.StartTokens
+	}
+	if u.EnableSongGuess != nil {
+		next.EnableSongGuess = *u.EnableSongGuess
+	}
+	if next.TargetCards < 1 || next.MaxTokens < 1 || next.MaxTokens > MaxTokensLimit ||
+		next.StartTokens < 0 || next.StartTokens > next.MaxTokens {
+		return ErrInvalidSettings
+	}
+	g.Settings = next
+	for _, p := range g.Players {
+		p.Tokens = next.StartTokens
 	}
 	return nil
 }

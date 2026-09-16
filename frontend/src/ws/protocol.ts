@@ -31,13 +31,15 @@ export interface CurrentTurnView {
   stealWindowOpen: boolean;
   stealClaims: string[];
   stealsPlaced: string[];
+  /** Your own pending song guess; only present for the active player. */
+  songGuess: SongGuess | null;
 }
 
 export interface StatePayload {
   gameId: string;
   inviteCode: string;
   phase: "LOBBY" | "PREPARING" | "PLACING" | "CHALLENGING" | "REVEALING" | "GAME_OVER";
-  settings: { targetCards: number; startTokens: number; enableSongGuess: boolean };
+  settings: { targetCards: number; startTokens: number; maxTokens: number; enableSongGuess: boolean };
   hostId: string;
   youId: string;
   activePlayerId: string;
@@ -49,9 +51,9 @@ export interface StatePayload {
   tracksUsed: number;
 }
 
-export interface GuessOptions {
-  titles: string[];
-  artists: string[];
+export interface SongGuess {
+  title: string;
+  artist: string;
 }
 
 export interface TrackPreloadPayload {
@@ -64,7 +66,6 @@ export interface TrackPreparePayload {
   trackId: string;
   mediaUrl: string;
   durationMs: number;
-  guessOptions?: GuessOptions;
 }
 
 export interface TrackStartPayload {
@@ -97,7 +98,7 @@ export interface RevealPayload {
   challenges: RevealChallengeView[];
   outcome: "active_correct" | "challenger_correct" | "discarded";
   tokenChanges: TokenChangeView[];
-  songGuessResult?: { correct: boolean; awarded: boolean };
+  songGuessResult?: SongGuess & { titleCorrect: boolean; artistCorrect: boolean; correct: boolean; awarded: boolean };
   yearSource: string;
 }
 

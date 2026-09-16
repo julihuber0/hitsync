@@ -60,6 +60,7 @@
     "settings": "Einstellungen",
     "targetCards_one": "{{count}} Karte zum Gewinnen",
     "targetCards_other": "{{count}} Karten zum Gewinnen",
+    "maxTokens": "Maximale Tokens",
     "startTokens": "Start-Token",
     "songGuess": "Songraten-Bonus",
     "invite": "Einladen",
@@ -90,17 +91,17 @@
     "skip": "Song überspringen",
     "endGame": "Spiel beenden",
     "tapToEnableSound": "Tippen, um Ton zu aktivieren",
-    "guessTitle": "Errate den Song",
-    "guessTitleLabel": "Titel",
-    "guessArtistLabel": "Künstler",
-    "guessSubmit": "Tipp abgeben",
     "reconnecting": "Verbindung wird wiederhergestellt…",
     "cardsCount_one": "{{count}} Karte",
     "cardsCount_other": "{{count}} Karten",
     "tokensCount_one": "{{count}} Token",
     "tokensCount_other": "{{count}} Token",
     "addToken": "Token hinzufügen",
-    "removeToken": "Token entfernen"
+    "removeToken": "Token entfernen",
+    "guessTitle": "Errate den Song",
+    "guessHint": "Titel und Interpret richtig bringt einen Token. Geprüft wird beim Aufdecken, bis dahin kannst du es noch ändern.",
+    "guessTitleLabel": "Titel",
+    "guessArtistLabel": "Interpret"
   },
   "reveal": {
     "title": "Titel",
@@ -113,7 +114,10 @@
     "sourceNavidrome": "Navidrome",
     "sourceHitsyncYear": "Korrigiertes Jahr",
     "songGuessCorrect": "Bonus-Token verdient!",
-    "continuing": "Nächste Runde startet…"
+    "continuing": "Nächste Runde startet…",
+    "songGuessBy": "Tipp von {{name}}",
+    "songGuessAtMax": "Richtig, aber das Token-Limit ist schon erreicht",
+    "songGuessWrong": "Leider nicht ganz — kein Token"
   },
   "gameOver": {
     "title": "Spiel vorbei",

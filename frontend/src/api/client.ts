@@ -40,6 +40,8 @@ export interface AppConfig {
   maxPlayers: number;
   defaultTargetCards: number;
   defaultStartTokens: number;
+  defaultMaxTokens: number;
+  maxTokensLimit: number;
   songGuessAvailable: boolean;
 }
 
@@ -65,7 +67,7 @@ export const api = {
   logout: () => request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
   config: () => request<AppConfig>("/api/config"),
 
-  createGame: (displayName: string, settings?: { targetCards?: number; startTokens?: number; enableSongGuess?: boolean }) =>
+  createGame: (displayName: string, settings?: { targetCards?: number; startTokens?: number; maxTokens?: number; enableSongGuess?: boolean }) =>
     request<PlayerIdentity>("/api/games", { method: "POST", body: JSON.stringify({ displayName, settings }) }),
   joinGame: (inviteCode: string, displayName: string) =>
     request<PlayerIdentity>("/api/games/join", { method: "POST", body: JSON.stringify({ inviteCode, displayName }) }),

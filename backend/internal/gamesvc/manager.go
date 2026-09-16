@@ -64,7 +64,8 @@ func NewManager(cfg Config, st *store.Store, ts *TrackSource, mediaSigner *token
 }
 
 // CreateGame creates a new game hosted by a fresh player (§12.2).
-func (m *Manager) CreateGame(displayName string, targetCards, startTokens *int, enableSongGuess *bool) (PlayerIdentity, error) {
+// Settings not given in overrides use the server defaults.
+func (m *Manager) CreateGame(displayName string, overrides game.SettingsUpdate) (PlayerIdentity, error) {
 	m.mu.Lock()
 	if len(m.games) >= m.cfg.MaxConcurrentGames {
 		m.mu.Unlock()
@@ -86,17 +87,8 @@ func (m *Manager) CreateGame(displayName string, targetCards, startTokens *int, 
 	settings := game.Settings{
 		TargetCards:     m.cfg.DefaultTargetCards,
 		StartTokens:     m.cfg.DefaultStartTokens,
-		MaxTokens:       m.cfg.MaxTokens,
+		MaxTokens:       m.cfg.DefaultMaxTokens,
 		EnableSongGuess: m.cfg.EnableSongGuess,
-	}
-	if targetCards != nil {
-		settings.TargetCards = *targetCards
-	}
-	if startTokens != nil {
-		settings.StartTokens = *startTokens
-	}
-	if enableSongGuess != nil {
-		settings.EnableSongGuess = *enableSongGuess
 	}
 
 	mg := newManagedGame(id, code, settings, m.trackSource, m.mediaSigner, m.trackWarmer, m.st, m.cfg, m.log, m)
@@ -113,6 +105,7 @@ func (m *Manager) CreateGame(displayName string, targetCards, startTokens *int, 
 			return
 		}
 		playerID = p.ID
+		addErr = mg.g.UpdateSettings(p.ID, overrides)
 	})
 	if addErr != nil {
 		m.removeGame(id, code)

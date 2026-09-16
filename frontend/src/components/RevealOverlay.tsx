@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { Check, X } from "lucide-react";
 import type { RevealPayload, PlayerView } from "../ws/protocol";
 
 function sourceLabel(t: (k: string) => string, source: string): string {
@@ -46,11 +47,44 @@ export default function RevealOverlay({ reveal, players }: { reveal: RevealPaylo
             {reveal.outcome === "discarded" && <span className="text-neon/50">{t("reveal.discarded")}</span>}
           </div>
 
-          {reveal.songGuessResult?.awarded && <div className="text-xs text-accent2">{t("reveal.songGuessCorrect")}</div>}
+          {reveal.songGuessResult && (
+            <SongGuessResult
+              result={reveal.songGuessResult}
+              playerName={players.find((p) => p.id === reveal.activePlayerId)?.name ?? ""}
+            />
+          )}
 
           <div className="text-xs text-neon/30 mt-2">{t("reveal.continuing")}</div>
         </motion.div>
       </motion.div>
     </AnimatePresence>
+  );
+}
+
+function SongGuessResult({ result, playerName }: { result: NonNullable<RevealPayload["songGuessResult"]>; playerName: string }) {
+  const { t } = useTranslation();
+  const outcome = result.awarded
+    ? { text: t("reveal.songGuessCorrect"), className: "text-accent2" }
+    : result.correct
+      ? { text: t("reveal.songGuessAtMax"), className: "text-neon/60" }
+      : { text: t("reveal.songGuessWrong"), className: "text-neon/50" };
+
+  return (
+    <div className="mt-2 w-full border-t border-white/10 pt-3 flex flex-col gap-1 text-xs">
+      <div className="text-neon/50">{t("reveal.songGuessBy", { name: playerName })}</div>
+      <GuessPart label={t("reveal.title")} value={result.title} correct={result.titleCorrect} />
+      <GuessPart label={t("reveal.artist")} value={result.artist} correct={result.artistCorrect} />
+      <div className={`mt-1 ${outcome.className}`}>{outcome.text}</div>
+    </div>
+  );
+}
+
+function GuessPart({ label, value, correct }: { label: string; value: string; correct: boolean }) {
+  return (
+    <div className="flex items-center justify-center gap-1.5">
+      <span className="text-neon/40">{label}:</span>
+      <span className="truncate max-w-[12rem]">{value || "—"}</span>
+      {correct ? <Check size={14} className="text-success shrink-0" /> : <X size={14} className="text-danger shrink-0" />}
+    </div>
   );
 }

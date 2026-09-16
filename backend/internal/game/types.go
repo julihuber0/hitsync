@@ -143,6 +143,7 @@ var (
 	ErrStealNotClaimed  = errors.New("press steal before placing a steal")
 	ErrDuplicateName    = errors.New("display name already in use")
 	ErrInvalidName      = errors.New("invalid display name")
+	ErrInvalidSettings  = errors.New("invalid game settings")
 	ErrPaletteExhausted = errors.New("no colours left in the palette")
 	ErrNotHost          = errors.New("host only")
 	ErrTooFewPlayers    = errors.New("not enough players")

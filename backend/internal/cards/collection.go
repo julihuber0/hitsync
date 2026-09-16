@@ -215,21 +215,6 @@ func (c *Collection) PlayableCount() int {
 	return len(c.playable)
 }
 
-// RandomCards returns up to n cards sampled at random from the whole
-// collection (duplicates possible), for song-guess decoys.
-func (c *Collection) RandomCards(n int) []Card {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if len(c.all) == 0 {
-		return nil
-	}
-	out := make([]Card, n)
-	for i := range out {
-		out[i] = c.all[rand.Intn(len(c.all))]
-	}
-	return out
-}
-
 // Stats returns counts and scan status.
 func (c *Collection) Stats() Stats {
 	c.mu.RLock()

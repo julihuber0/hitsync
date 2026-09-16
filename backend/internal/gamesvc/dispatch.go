@@ -3,6 +3,7 @@ package gamesvc
 import (
 	"encoding/json"
 
+	"github.com/julianhuber/hitsync/backend/internal/game"
 	"github.com/julianhuber/hitsync/backend/internal/ws"
 )
 
@@ -19,7 +20,9 @@ func dispatchMessage(mg *ManagedGame, c *ws.Conn, env ws.Envelope) {
 	case ws.TypeUpdateSettings:
 		var p ws.UpdateSettingsPayload
 		if json.Unmarshal(env.Payload, &p) == nil {
-			mg.handleUpdateSettings(c.PlayerID, p.TargetCards, p.StartTokens, p.EnableSongGuess)
+			mg.handleUpdateSettings(c.PlayerID, game.SettingsUpdate{
+				TargetCards: p.TargetCards, StartTokens: p.StartTokens, MaxTokens: p.MaxTokens, EnableSongGuess: p.EnableSongGuess,
+			})
 		}
 
 	case ws.TypeStartGame:
@@ -30,7 +33,13 @@ func dispatchMessage(mg *ManagedGame, c *ws.Conn, env ws.Envelope) {
 	case ws.TypePlaceCard:
 		var p ws.PlaceCardPayload
 		if json.Unmarshal(env.Payload, &p) == nil {
-			mg.handlePlaceCard(c.PlayerID, p.SlotIndex, p.TitleGuess, p.ArtistGuess)
+			mg.handlePlaceCard(c.PlayerID, p.SlotIndex)
+		}
+
+	case ws.TypeSongGuess:
+		var p ws.SongGuessPayload
+		if json.Unmarshal(env.Payload, &p) == nil {
+			mg.handleSongGuess(c, p.Title, p.Artist)
 		}
 
 	case ws.TypePlacePreview:

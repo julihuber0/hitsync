@@ -593,6 +593,37 @@ func TestPhaseTransitions(t *testing.T) {
 	})
 }
 
+func TestSingleplayer(t *testing.T) {
+	g := New("game1", "ABC123", Settings{TargetCards: 3, StartTokens: 2, MaxTokens: 5})
+	if _, err := g.AddPlayer("solo-id", "Solo", 12); err != nil {
+		t.Fatalf("add player: %v", err)
+	}
+	if err := g.StartGame(1); err != nil {
+		t.Fatalf("start singleplayer game: %v", err)
+	}
+	g.Player("solo-id").Timeline = []Card{{Year: 1980}}
+
+	for turn := 0; turn < 2; turn++ {
+		startTurn(t, g, Card{TrackID: "t" + string(rune('a'+turn)), Year: 1990 + turn})
+		if g.Turn.ActivePlayerID != "solo-id" {
+			t.Fatalf("turn %d: active = %q", turn, g.Turn.ActivePlayerID)
+		}
+		skip, err := g.PlaceCard("solo-id", len(g.ActivePlayer().Timeline))
+		if err != nil {
+			t.Fatalf("turn %d place: %v", turn, err)
+		}
+		if !skip || g.Phase != PhaseRevealing {
+			t.Fatalf("turn %d: stealing must be skipped, phase = %s", turn, g.Phase)
+		}
+		if _, err := g.Resolve(); err != nil {
+			t.Fatalf("turn %d resolve: %v", turn, err)
+		}
+	}
+	if g.Phase != PhaseGameOver || g.WinnerID != "solo-id" {
+		t.Fatalf("phase = %s, winner = %q; want solo win at 3 cards", g.Phase, g.WinnerID)
+	}
+}
+
 func TestAdjustTokens(t *testing.T) {
 	t.Run("host can grant and remove tokens", func(t *testing.T) {
 		g, ids := newTestGame(t, "Anna", "Bob") // Anna is host, StartTokens: 2, MaxTokens: 5
@@ -639,4 +670,41 @@ func TestAdjustTokens(t *testing.T) {
 			t.Errorf("expected ErrPlayerNotFound, got %v", err)
 		}
 	})
+}
+
+func TestUpdateSettingsTokens(t *testing.T) {
+	g := New("game1", "ABC123", Settings{TargetCards: 10, StartTokens: 2, MaxTokens: 5})
+	host, _ := g.AddPlayer("host-id", "Host", 12)
+	guest, _ := g.AddPlayer("guest-id", "Guest", 12)
+	intp := func(v int) *int { return &v }
+
+	if err := g.UpdateSettings(guest.ID, SettingsUpdate{MaxTokens: intp(3)}); err != ErrNotHost {
+		t.Fatalf("guest update: got %v, want ErrNotHost", err)
+	}
+	if err := g.UpdateSettings(host.ID, SettingsUpdate{StartTokens: intp(4)}); err != nil {
+		t.Fatalf("start tokens: %v", err)
+	}
+	if host.Tokens != 4 || guest.Tokens != 4 {
+		t.Errorf("joined players must follow start tokens: host %d, guest %d", host.Tokens, guest.Tokens)
+	}
+	if err := g.UpdateSettings(host.ID, SettingsUpdate{MaxTokens: intp(3)}); err != nil {
+		t.Fatalf("max tokens: %v", err)
+	}
+	if g.Settings.MaxTokens != 3 || g.Settings.StartTokens != 3 || guest.Tokens != 3 {
+		t.Errorf("lowering max must lower start tokens: %+v, guest %d", g.Settings, guest.Tokens)
+	}
+	for _, u := range []SettingsUpdate{
+		{MaxTokens: intp(0)},
+		{MaxTokens: intp(MaxTokensLimit + 1)},
+		{StartTokens: intp(4)}, // above max 3
+		{StartTokens: intp(-1)},
+		{MaxTokens: intp(2), StartTokens: intp(3)},
+	} {
+		if err := g.UpdateSettings(host.ID, u); err != ErrInvalidSettings {
+			t.Errorf("UpdateSettings(%+v) = %v, want ErrInvalidSettings", u, err)
+		}
+	}
+	if g.Settings.MaxTokens != 3 || g.Settings.StartTokens != 3 {
+		t.Errorf("rejected updates changed settings: %+v", g.Settings)
+	}
 }

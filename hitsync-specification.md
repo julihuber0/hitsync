@@ -114,6 +114,30 @@ claimant who leaves or is removed no longer holds up the turn; a disconnected
 one is removed after `PLAYER_RECONNECT_GRACE`, like an absent active player.
 The song keeps looping throughout and stops at the reveal.
 
+### Song guess bonus
+
+When the lobby's song guess bonus is enabled, the active player can type the
+song's title and artist (`song_guess`) at any time during `PLACING` and
+`CHALLENGING`; each message replaces the previous guess. At the reveal the
+guess is checked, independently of placement and stealing: title and artist
+both correct earns the active player one token, up to the game's maximum
+(set by the host in the lobby, 1–10). Nobody else gains or loses a token from
+the guess. The reveal shows the guess and which parts were correct to all
+players.
+
+Matching (`internal/songmatch`) ignores case, accents, punctuation, spacing,
+a leading article ("Beatles"), and "&"/"n" versus "and". Bracketed parts and
+anything after " - " (e.g. "(2023 Remix)", "- Live") may be left out. Typos
+are tolerated by length: names of up to 4 characters must match exactly, 5–11
+characters allow 1 mistake, 12–17 allow 2, and longer names about one per 6
+characters. For a credit with several artists, naming any one of them is
+enough. The host can still adjust tokens by hand.
+
+A game can start with a single player (`MIN_PLAYERS=1`, the default). With
+nobody else holding tokens, `CHALLENGING` is skipped and every placement goes
+straight to the reveal. A multiplayer game also continues when players leave,
+as long as at least `MIN_PLAYERS` remain.
+
 The eight-second preparing cap bounds how long a turn waits for clients'
 downloads; a client that is still downloading afterwards joins playback in
 sync once it is done. Placement and challenge

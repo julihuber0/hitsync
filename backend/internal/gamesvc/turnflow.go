@@ -1,9 +1,11 @@
 package gamesvc
 
 import (
+	"strings"
 	"time"
 
 	"github.com/julianhuber/hitsync/backend/internal/game"
+	"github.com/julianhuber/hitsync/backend/internal/songmatch"
 	"github.com/julianhuber/hitsync/backend/internal/ws"
 )
 
@@ -66,10 +68,6 @@ func (mg *ManagedGame) beginNextTurn(advance bool) {
 	mg.pendingSongGuess = nil
 
 	mg.track = &activeTrack{prepareID: newID(), trackID: card.TrackID, durationMs: int64(cand.DurationSec) * 1000}
-	if mg.g.Settings.EnableSongGuess {
-		titles, artists := mg.trackSource.SongGuessOptions(&card)
-		mg.track.guessOptions = &ws.GuessOptions{Titles: titles, Artists: artists}
-	}
 
 	if url, ok := mg.mediaURL(card.TrackID); ok {
 		for _, c := range mg.conns {
@@ -150,10 +148,7 @@ func (mg *ManagedGame) handlePlacePreview(playerID string, slotIndex int) {
 	mg.broadcastState()
 }
 
-func (mg *ManagedGame) handlePlaceCard(playerID string, slotIndex int, titleGuess, artistGuess *string) {
-	if titleGuess != nil && artistGuess != nil {
-		mg.pendingSongGuess = &pendingSongGuess{titleGuess: *titleGuess, artistGuess: *artistGuess}
-	}
+func (mg *ManagedGame) handlePlaceCard(playerID string, slotIndex int) {
 	skip, err := mg.g.PlaceCard(playerID, slotIndex)
 	if err != nil {
 		if c := mg.conns[playerID]; c != nil {
@@ -273,18 +268,24 @@ func (mg *ManagedGame) beginRevealing() {
 		return
 	}
 
-	if mg.pendingSongGuess != nil {
-		card := mg.g.Turn
-		correct := card != nil &&
-			normalizedEquals(mg.pendingSongGuess.titleGuess, reveal.Card.Title) &&
-			normalizedEquals(mg.pendingSongGuess.artistGuess, reveal.Card.Artist)
+	// The song guess is independent of placement and stealing: only the
+	// active player's own title and artist decide their bonus token.
+	var guessResult *SongGuessResultView
+	if guess := mg.pendingSongGuess; guess != nil {
+		titleCorrect := songmatch.Title(guess.title, reveal.Card.Title)
+		artistCorrect := songmatch.Artist(guess.artist, reveal.Card.Artist)
 		if active := mg.g.Player(reveal.ActivePlayerID); active != nil {
-			reveal.ApplySongGuessReward(active, mg.g.Settings.MaxTokens, correct)
+			reveal.ApplySongGuessReward(active, mg.g.Settings.MaxTokens, titleCorrect && artistCorrect)
+		}
+		guessResult = &SongGuessResultView{
+			Title: guess.title, Artist: guess.artist,
+			TitleCorrect: titleCorrect, ArtistCorrect: artistCorrect,
+			Correct: reveal.SongGuessCorrect, Awarded: reveal.SongGuessAwarded,
 		}
 	}
 	mg.pendingSongGuess = nil
 
-	payload := buildRevealPayload(reveal, mg.currentYearSource)
+	payload := buildRevealPayload(reveal, mg.currentYearSource, guessResult)
 	for _, c := range mg.conns {
 		if c == nil {
 			continue
@@ -320,21 +321,6 @@ func (mg *ManagedGame) finalizeGameOver() {
 	mg.clearPhaseTimeout()
 	mg.broadcastState()
 	mg.persistOnGameOver()
-}
-
-func normalizedEquals(a, b string) bool {
-	return trimLower(a) == trimLower(b)
-}
-
-func trimLower(s string) string {
-	out := make([]rune, 0, len(s))
-	for _, r := range s {
-		if r >= 'A' && r <= 'Z' {
-			r += 'a' - 'A'
-		}
-		out = append(out, r)
-	}
-	return string(out)
 }
 
 func (mg *ManagedGame) onRevealTimeout() {
@@ -414,8 +400,43 @@ func (mg *ManagedGame) handlePlayAgain(hostID string) {
 	mg.broadcastState()
 }
 
-func (mg *ManagedGame) handleUpdateSettings(hostID string, targetCards, startTokens *int, enableSongGuess *bool) {
-	if err := mg.g.UpdateSettings(hostID, targetCards, startTokens, enableSongGuess); err != nil {
+// maxGuessRunes bounds a stored song guess.
+const maxGuessRunes = 200
+
+// handleSongGuess stores the active player's title/artist guess. It may be
+// changed freely until the reveal checks it; sending two empty fields
+// withdraws it. The guess stays private until the reveal.
+func (mg *ManagedGame) handleSongGuess(c *ws.Conn, title, artist string) {
+	if !mg.g.Settings.EnableSongGuess || mg.g.Turn == nil || c.PlayerID != mg.g.Turn.ActivePlayerID {
+		mg.sendError(c, "invalid_song_guess", "only the active player may guess, when the song guess bonus is enabled")
+		return
+	}
+	switch mg.g.Phase {
+	case game.PhasePreparing, game.PhasePlacing, game.PhaseChallenging:
+	default:
+		mg.sendError(c, "invalid_song_guess", "guesses are closed once the card is revealed")
+		return
+	}
+	title, artist = truncateRunes(strings.TrimSpace(title), maxGuessRunes), truncateRunes(strings.TrimSpace(artist), maxGuessRunes)
+	if title == "" && artist == "" {
+		mg.pendingSongGuess = nil
+		return
+	}
+	mg.pendingSongGuess = &pendingSongGuess{title: title, artist: artist}
+}
+
+func truncateRunes(s string, n int) string {
+	if r := []rune(s); len(r) > n {
+		return string(r[:n])
+	}
+	return s
+}
+
+func (mg *ManagedGame) handleUpdateSettings(hostID string, u game.SettingsUpdate) {
+	if err := mg.g.UpdateSettings(hostID, u); err != nil {
+		if c := mg.conns[hostID]; c != nil {
+			mg.sendError(c, "invalid_settings", err.Error())
+		}
 		return
 	}
 	mg.broadcastState()

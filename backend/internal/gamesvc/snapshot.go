@@ -31,6 +31,7 @@ type PlayerView struct {
 type SettingsView struct {
 	TargetCards     int  `json:"targetCards"`
 	StartTokens     int  `json:"startTokens"`
+	MaxTokens       int  `json:"maxTokens"`
 	EnableSongGuess bool `json:"enableSongGuess"`
 }
 
@@ -49,6 +50,9 @@ type CurrentTurnView struct {
 	// who have placed (the slot itself stays hidden until the reveal).
 	StealClaims  []string `json:"stealClaims"`
 	StealsPlaced []string `json:"stealsPlaced"`
+	// SongGuess is the recipient's own pending guess; only ever set for the
+	// active player, so a reconnecting client can restore its input.
+	SongGuess *SongGuessView `json:"songGuess"`
 }
 
 // StatePayload is the full per-recipient game state snapshot (§13.3).
@@ -138,6 +142,9 @@ func (mg *ManagedGame) buildState(forPlayerID string) StatePayload {
 				ct.HasPassed = append(ct.HasPassed, playerID)
 			}
 		}
+		if guess := mg.pendingSongGuess; guess != nil && forPlayerID == g.Turn.ActivePlayerID {
+			ct.SongGuess = &SongGuessView{Title: guess.title, Artist: guess.artist}
+		}
 		currentTurn = ct
 	}
 
@@ -165,6 +172,7 @@ func (mg *ManagedGame) buildState(forPlayerID string) StatePayload {
 		Settings: SettingsView{
 			TargetCards:     g.Settings.TargetCards,
 			StartTokens:     g.Settings.StartTokens,
+			MaxTokens:       g.Settings.MaxTokens,
 			EnableSongGuess: g.Settings.EnableSongGuess,
 		},
 		HostID:              g.HostID,
@@ -199,10 +207,22 @@ type TokenChangeView struct {
 	Delta    int    `json:"delta"`
 }
 
-// SongGuessResultView reports the optional bonus round's outcome (§8.6).
+// SongGuessView is a title/artist guess.
+type SongGuessView struct {
+	Title  string `json:"title"`
+	Artist string `json:"artist"`
+}
+
+// SongGuessResultView reports the active player's song guess at the reveal
+// (§8.6). Awarded is false for a correct guess when the player already holds
+// the maximum number of tokens.
 type SongGuessResultView struct {
-	Correct bool `json:"correct"`
-	Awarded bool `json:"awarded"`
+	Title         string `json:"title"`
+	Artist        string `json:"artist"`
+	TitleCorrect  bool   `json:"titleCorrect"`
+	ArtistCorrect bool   `json:"artistCorrect"`
+	Correct       bool   `json:"correct"`
+	Awarded       bool   `json:"awarded"`
 }
 
 // RevealPayload is the server->client `reveal` message (§13.2).
@@ -219,7 +239,7 @@ type RevealPayload struct {
 	YearSource      string                `json:"yearSource"`
 }
 
-func buildRevealPayload(reveal *game.Reveal, yearSource string) RevealPayload {
+func buildRevealPayload(reveal *game.Reveal, yearSource string, songGuess *SongGuessResultView) RevealPayload {
 	outcome := "discarded"
 	if reveal.ActiveCorrect {
 		outcome = "active_correct"
@@ -235,11 +255,6 @@ func buildRevealPayload(reveal *game.Reveal, yearSource string) RevealPayload {
 	tokenChanges := make([]TokenChangeView, 0, len(reveal.TokenChanges))
 	for playerID, delta := range reveal.TokenChanges {
 		tokenChanges = append(tokenChanges, TokenChangeView{PlayerID: playerID, Delta: delta})
-	}
-
-	var songGuess *SongGuessResultView
-	if reveal.SongGuessCorrect || reveal.SongGuessAwarded {
-		songGuess = &SongGuessResultView{Correct: reveal.SongGuessCorrect, Awarded: reveal.SongGuessAwarded}
 	}
 
 	return RevealPayload{

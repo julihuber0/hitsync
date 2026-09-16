@@ -47,11 +47,11 @@ type Config struct {
 
 	// Game rules and limits
 	MaxConcurrentGames   int           `env:"MAX_CONCURRENT_GAMES" envDefault:"10"`
-	MinPlayers           int           `env:"MIN_PLAYERS" envDefault:"2"`
+	MinPlayers           int           `env:"MIN_PLAYERS" envDefault:"1"` // 1 allows singleplayer
 	MaxPlayers           int           `env:"MAX_PLAYERS" envDefault:"12"`
 	DefaultTargetCards   int           `env:"DEFAULT_TARGET_CARDS" envDefault:"10"`
 	DefaultStartTokens   int           `env:"DEFAULT_START_TOKENS" envDefault:"2"`
-	MaxTokens            int           `env:"MAX_TOKENS" envDefault:"5"`
+	DefaultMaxTokens     int           `env:"DEFAULT_MAX_TOKENS" envDefault:"5"`
 	RuleEnableSongGuess  bool          `env:"RULE_ENABLE_SONG_GUESS" envDefault:"true"`
 	TurnPlacementTimeout time.Duration `env:"TURN_PLACEMENT_TIMEOUT" envDefault:"90s"`
 	TurnChallengeWindow  time.Duration `env:"TURN_CHALLENGE_WINDOW" envDefault:"5s"`
@@ -118,6 +118,12 @@ func (c *Config) Validate() error {
 	}
 	if c.AudioBitrate < 32 || c.AudioBitrate > 320 {
 		errs = append(errs, "AUDIO_BITRATE must be between 32 and 320")
+	}
+	if c.DefaultMaxTokens < 1 || c.DefaultMaxTokens > 10 {
+		errs = append(errs, "DEFAULT_MAX_TOKENS must be between 1 and 10")
+	}
+	if c.DefaultStartTokens < 0 || c.DefaultStartTokens > c.DefaultMaxTokens {
+		errs = append(errs, "DEFAULT_START_TOKENS must be between 0 and DEFAULT_MAX_TOKENS")
 	}
 	if c.MinPlayers < 1 {
 		errs = append(errs, "MIN_PLAYERS must be at least 1")

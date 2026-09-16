@@ -15,7 +15,7 @@ export default function Lobby() {
   const { t } = useTranslation();
   const state = useGameStore((s) => s.state)!;
   const socket = useGameStore((s) => s.socket);
-  const minPlayers = useAppStore((s) => s.config?.minPlayers ?? 2);
+  const minPlayers = useAppStore((s) => s.config?.minPlayers ?? 1);
   const [copied, setCopied] = useState(false);
 
   const isHost = state.hostId === state.youId;
@@ -102,7 +102,8 @@ function SettingsPanel({ isHost }: { isHost: boolean }) {
   const { t } = useTranslation();
   const state = useGameStore((s) => s.state)!;
   const socket = useGameStore((s) => s.socket);
-  const { targetCards, startTokens, enableSongGuess } = state.settings;
+  const maxTokensLimit = useAppStore((s) => s.config?.maxTokensLimit ?? 10);
+  const { targetCards, startTokens, maxTokens, enableSongGuess } = state.settings;
 
   return (
     <div className="flex flex-col gap-4">
@@ -117,11 +118,23 @@ function SettingsPanel({ isHost }: { isHost: boolean }) {
           className="w-full accent-accent"
         />
       </SettingRow>
+      <SettingRow label={t("lobby.maxTokens")}>
+        <input
+          type="range"
+          min={1}
+          max={maxTokensLimit}
+          value={maxTokens}
+          disabled={!isHost}
+          onChange={(e) => socket?.updateSettings({ maxTokens: Number(e.target.value) })}
+          className="w-full accent-accent"
+        />
+        <span className="text-sm tabular-nums w-6 text-right">{maxTokens}</span>
+      </SettingRow>
       <SettingRow label={t("lobby.startTokens")}>
         <input
           type="range"
           min={0}
-          max={5}
+          max={maxTokens}
           value={startTokens}
           disabled={!isHost}
           onChange={(e) => socket?.updateSettings({ startTokens: Number(e.target.value) })}

@@ -156,14 +156,17 @@ export class GameSocket {
   ready(prepareId: string): void {
     this.send("ready", { prepareId });
   }
-  updateSettings(settings: { targetCards?: number; startTokens?: number; enableSongGuess?: boolean }): void {
+  updateSettings(settings: { targetCards?: number; startTokens?: number; maxTokens?: number; enableSongGuess?: boolean }): void {
     this.send("update_settings", settings);
   }
   startGame(): void {
     this.send("start_game", {});
   }
-  placeCard(slotIndex: number, titleGuess?: string, artistGuess?: string): void {
-    this.send("place_card", { slotIndex, titleGuess, artistGuess });
+  placeCard(slotIndex: number): void {
+    this.send("place_card", { slotIndex });
+  }
+  songGuess(title: string, artist: string): void {
+    this.send("song_guess", { title, artist });
   }
   previewPlacement(slotIndex: number): void {
     this.send("place_preview", { slotIndex });

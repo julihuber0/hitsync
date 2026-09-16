@@ -3,7 +3,6 @@ package gamesvc
 import (
 	"crypto/rand"
 	"math/big"
-	mrand "math/rand"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,10 +10,6 @@ import (
 
 func nowMs() int64 {
 	return time.Now().UnixMilli()
-}
-
-func shuffleStrings(s []string) {
-	mrand.Shuffle(len(s), func(i, j int) { s[i], s[j] = s[j], s[i] })
 }
 
 func newID() string {

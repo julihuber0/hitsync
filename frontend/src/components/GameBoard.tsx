@@ -23,8 +23,6 @@ export default function GameBoard() {
 
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [challengeSlot, setChallengeSlot] = useState<number | null>(null);
-  const [titleGuess, setTitleGuess] = useState<string | null>(null);
-  const [artistGuess, setArtistGuess] = useState<string | null>(null);
 
   const isActive = state.activePlayerId === state.youId;
   const activePlayer = state.players.find((p) => p.id === state.activePlayerId);
@@ -34,8 +32,6 @@ export default function GameBoard() {
   useEffect(() => {
     setSelectedSlot(null);
     setChallengeSlot(null);
-    setTitleGuess(null);
-    setArtistGuess(null);
   }, [trackPrepare?.prepareId]);
 
   const inPlacing = state.phase === "PLACING";
@@ -58,7 +54,7 @@ export default function GameBoard() {
 
   const confirmPlacement = () => {
     if (selectedSlot === null) return;
-    socket?.placeCard(selectedSlot, titleGuess ?? undefined, artistGuess ?? undefined);
+    socket?.placeCard(selectedSlot);
   };
 
   const confirmChallenge = () => {
@@ -111,38 +107,40 @@ export default function GameBoard() {
           )}
         </div>
 
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-neon/60">{t("board.otherTimelines")}</h2>
-          <div className="grid gap-3 xl:grid-cols-2">
-            {otherPlayers.map((player) => {
-              const isStealTarget = selectingSteal && player.id === activePlayer?.id;
-              return (
-                <article
-                  key={player.id}
-                  className={`rounded-xl border p-3 transition-all duration-200 ${
-                    player.id === activePlayer?.id ? "border-accent/40 bg-accent/5 shadow-neon-sm" : "border-white/10 bg-white/[0.02]"
-                  }`}
-                >
-                  <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: player.colour }} />
-                    {player.name}
-                  </div>
-                  <Timeline
-                    timeline={player.timeline}
-                    mode={isStealTarget ? "challenge" : "view"}
-                    selectedSlot={isStealTarget ? challengeSlot : null}
-                    onSelectSlot={isStealTarget ? selectChallengeSlot : undefined}
-                    takenSlots={state.currentTurn?.challengeSlotsTaken ?? []}
-                    disabledSlot={player.id === activePlayer?.id ? state.currentTurn?.activePlacementSlot : null}
-                    placementSlot={player.id === activePlayer?.id ? state.currentTurn?.activePlacementSlot : null}
-                    previewSlot={player.id === activePlayer?.id ? state.currentTurn?.activePlacementPreviewSlot : null}
-                    previews={player.id === activePlayer?.id ? previews : []}
-                  />
-                </article>
-              );
-            })}
-          </div>
-        </section>
+        {otherPlayers.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-neon/60">{t("board.otherTimelines")}</h2>
+            <div className="grid gap-3 xl:grid-cols-2">
+              {otherPlayers.map((player) => {
+                const isStealTarget = selectingSteal && player.id === activePlayer?.id;
+                return (
+                  <article
+                    key={player.id}
+                    className={`rounded-xl border p-3 transition-all duration-200 ${
+                      player.id === activePlayer?.id ? "border-accent/40 bg-accent/5 shadow-neon-sm" : "border-white/10 bg-white/[0.02]"
+                    }`}
+                  >
+                    <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: player.colour }} />
+                      {player.name}
+                    </div>
+                    <Timeline
+                      timeline={player.timeline}
+                      mode={isStealTarget ? "challenge" : "view"}
+                      selectedSlot={isStealTarget ? challengeSlot : null}
+                      onSelectSlot={isStealTarget ? selectChallengeSlot : undefined}
+                      takenSlots={state.currentTurn?.challengeSlotsTaken ?? []}
+                      disabledSlot={player.id === activePlayer?.id ? state.currentTurn?.activePlacementSlot : null}
+                      placementSlot={player.id === activePlayer?.id ? state.currentTurn?.activePlacementSlot : null}
+                      previewSlot={player.id === activePlayer?.id ? state.currentTurn?.activePlacementPreviewSlot : null}
+                      previews={player.id === activePlayer?.id ? previews : []}
+                    />
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <section className="mt-auto rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
           <h2 className="text-base font-semibold">{t("board.yourTimeline")}</h2>
@@ -157,7 +155,6 @@ export default function GameBoard() {
 
           {inPlacing && isActive && (
             <div className="flex flex-col items-center gap-3 animate-fade-in">
-              {trackPrepare?.guessOptions && <SongGuessPanel options={trackPrepare.guessOptions} titleGuess={titleGuess} artistGuess={artistGuess} onSelectTitle={setTitleGuess} onSelectArtist={setArtistGuess} />}
               <button
                 onClick={confirmPlacement}
                 disabled={selectedSlot === null}
@@ -165,6 +162,17 @@ export default function GameBoard() {
               >
                 {t("board.confirmPlacement")}
               </button>
+            </div>
+          )}
+
+          {/* The guess is independent of placing and stealing and stays editable until the reveal. */}
+          {isActive && state.settings.enableSongGuess && (inPlacing || inChallenging) && (
+            <div className="flex justify-center animate-fade-in">
+              <SongGuessPanel
+                key={trackPrepare?.prepareId}
+                initial={turn?.songGuess ?? null}
+                onChange={(title, artist) => socket?.songGuess(title, artist)}
+              />
             </div>
           )}
         </section>

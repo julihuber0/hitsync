@@ -60,6 +60,7 @@
     "settings": "Settings",
     "targetCards_one": "{{count}} card to win",
     "targetCards_other": "{{count}} cards to win",
+    "maxTokens": "Maximum tokens",
     "startTokens": "Starting tokens",
     "songGuess": "Song guess bonus",
     "invite": "Invite",
@@ -90,17 +91,17 @@
     "skip": "Skip track",
     "endGame": "End game",
     "tapToEnableSound": "Tap to enable sound",
-    "guessTitle": "Name that tune",
-    "guessTitleLabel": "Title",
-    "guessArtistLabel": "Artist",
-    "guessSubmit": "Lock in guess",
     "reconnecting": "Reconnecting…",
     "cardsCount_one": "{{count}} card",
     "cardsCount_other": "{{count}} cards",
     "tokensCount_one": "{{count}} token",
     "tokensCount_other": "{{count}} tokens",
     "addToken": "Add token",
-    "removeToken": "Remove token"
+    "removeToken": "Remove token",
+    "guessTitle": "Name that tune",
+    "guessHint": "Title and artist both right earns a token. Checked at the reveal; you can change it until then.",
+    "guessTitleLabel": "Title",
+    "guessArtistLabel": "Artist"
   },
   "reveal": {
     "title": "Title",
@@ -113,7 +114,10 @@
     "sourceNavidrome": "Navidrome",
     "sourceHitsyncYear": "Corrected year",
     "songGuessCorrect": "Bonus token earned!",
-    "continuing": "Next turn starting…"
+    "continuing": "Next turn starting…",
+    "songGuessBy": "{{name}}'s guess",
+    "songGuessAtMax": "Correct, but already at the token limit",
+    "songGuessWrong": "Not quite — no token"
   },
   "gameOver": {
     "title": "Game over",

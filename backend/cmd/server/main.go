@@ -81,7 +81,7 @@ func main() {
 	gsCfg := gamesvc.Config{
 		MinPlayers: cfg.MinPlayers, MaxPlayers: cfg.MaxPlayers, MaxConcurrentGames: cfg.MaxConcurrentGames,
 		DefaultTargetCards: cfg.DefaultTargetCards, DefaultStartTokens: cfg.DefaultStartTokens,
-		MaxTokens: cfg.MaxTokens, EnableSongGuess: cfg.RuleEnableSongGuess,
+		DefaultMaxTokens: cfg.DefaultMaxTokens, EnableSongGuess: cfg.RuleEnableSongGuess,
 		TurnPlacementTimeout: cfg.TurnPlacementTimeout, DisconnectedPlacementTimeout: 20 * time.Second,
 		TurnChallengeWindow: cfg.TurnChallengeWindow, RevealDuration: cfg.RevealDuration,
 		PreparingCap: 8 * time.Second, StartAtLeadMs: 400,
