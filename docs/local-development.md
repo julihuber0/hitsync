@@ -65,3 +65,10 @@ The backend's transcoding tests run FFmpeg and are skipped when it is not
 installed.
 
 Stop support services with `make dev-down`.
+
+The dev database runs Postgres 18. If you created the `pgdata-dev` volume with
+an older version, remove it once (it only holds game snapshots and results):
+
+```sh
+docker compose -f docker-compose.dev.yml down -v
+```

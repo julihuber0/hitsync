@@ -19,6 +19,21 @@ export default defineConfig({
       "/ws": { target: BACKEND_URL, ws: true, changeOrigin: true },
     },
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Libraries change far less often than app code; separate chunks keep
+        // them cached across deploys and every chunk under the 500 kB warning.
+        codeSplitting: {
+          groups: [
+            { name: "react", test: /[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|cookie|set-cookie-parser)[\\/]/, priority: 30 },
+            { name: "motion", test: /[\\/]node_modules[\\/](framer-motion|motion-dom|motion-utils)[\\/]/, priority: 20 },
+            { name: "vendor", test: /[\\/]node_modules[\\/]/, priority: 10 },
+          ],
+        },
+      },
+    },
+  },
   test: {
     environment: "jsdom",
     globals: true,

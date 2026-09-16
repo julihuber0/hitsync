@@ -13,13 +13,15 @@ volumes:
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-hitsync}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
       POSTGRES_DB: ${POSTGRES_DB:-hitsync}
-    volumes: [pgdata:/var/lib/postgresql/data]
+    # Postgres 18+ keeps its data in a version-specific subdirectory
+    # (/var/lib/postgresql/18/docker), so the volume goes one level up.
+    volumes: [pgdata:/var/lib/postgresql]
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hitsync}"]
