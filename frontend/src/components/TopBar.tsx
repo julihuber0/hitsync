@@ -51,7 +51,7 @@ export default function TopBar() {
       </span>
 
       <div className="flex flex-1 items-center justify-end gap-1.5 sm:gap-2">
-        <div className="hidden items-center gap-1 rounded-lg border border-white/[0.07] bg-white/[0.03] pl-1 pr-3 md:flex">
+        <div className="hidden items-center gap-1 rounded-lg border border-white/[0.07] bg-white/3 pl-1 pr-3 md:flex">
           <button
             onClick={() => {
               const next = !muted;
@@ -97,7 +97,7 @@ export default function TopBar() {
         <LanguageToggle className="hidden sm:inline-flex" />
 
         {state.hostId === state.youId && (
-          <div className="flex items-center gap-1 border-l border-white/[0.08] pl-1.5 sm:pl-2">
+          <div className="flex items-center gap-1 border-l border-white/8 pl-1.5 sm:pl-2">
             <button onClick={() => socket?.skipTrack()} className="btn btn-secondary btn-sm h-9" title={t("board.skip")}>
               <SkipForward size={14} />
               <span className="hidden lg:inline">{t("board.skip")}</span>

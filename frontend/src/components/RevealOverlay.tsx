@@ -40,9 +40,9 @@ export default function RevealOverlay({
           animate={{ rotateY: 0, opacity: 1, scale: 1 }}
           transition={{ duration: 0.35, ease: [0.2, 0.8, 0.2, 1] }}
           style={{ transformStyle: "preserve-3d" }}
-          className="relative w-full max-w-sm overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-b from-elevated to-surface text-center shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]"
+          className="relative w-full max-w-sm overflow-hidden rounded-[28px] border border-white/10 bg-linear-to-b from-elevated to-surface text-center shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]"
         >
-          <div aria-hidden className="pointer-events-none absolute -top-24 left-1/2 h-48 w-72 -translate-x-1/2 rounded-full bg-gradient-to-r from-accent/40 to-accent-end/40 blur-3xl" />
+          <div aria-hidden className="pointer-events-none absolute -top-24 left-1/2 h-48 w-72 -translate-x-1/2 rounded-full bg-linear-to-r from-accent/40 to-accent-end/40 blur-3xl" />
           <div className="relative flex flex-col items-center gap-2 px-8 pb-7 pt-9">
             <span className="chip mb-2 uppercase tracking-[0.12em]">{sourceLabel(t, reveal.yearSource)}</span>
             <div className="brand-text text-7xl font-bold tabular-nums tracking-tighter">{reveal.card.year}</div>
@@ -69,7 +69,7 @@ export default function RevealOverlay({
                 </span>
               )}
               {reveal.outcome === "discarded" && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-3.5 py-1.5 text-sm font-medium text-fg/60">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-sm font-medium text-fg/60">
                   <X size={15} />
                   {t("reveal.discarded")}
                 </span>
@@ -85,7 +85,7 @@ export default function RevealOverlay({
             />
           )}
 
-          <div className="flex items-center justify-center gap-2 border-t border-white/[0.06] py-3.5 text-xs text-fg/40">
+          <div className="flex items-center justify-center gap-2 border-t border-white/6 py-3.5 text-xs text-fg/40">
             <span className="spinner h-3 w-3 border" />
             {t("reveal.continuing")}
           </div>

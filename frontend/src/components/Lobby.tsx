@@ -145,7 +145,7 @@ function SettingsPanel({ isHost }: { isHost: boolean }) {
           onChange={(e) => socket?.updateSettings({ startTokens: Number(e.target.value) })}
         />
       </SettingRow>
-      <div className="flex flex-col gap-3 border-t border-white/[0.06] pt-4">
+      <div className="flex flex-col gap-3 border-t border-white/6 pt-4">
         <div>
           <div className="flex items-center gap-2 text-sm font-medium text-fg/80">
             <Coins size={15} className="text-gold" />
@@ -158,7 +158,7 @@ function SettingsPanel({ isHost }: { isHost: boolean }) {
             <label
               key={key}
               className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
-                guessFields[key] ? "border-accent/35 bg-accent/[0.07] text-fg" : "border-white/[0.07] bg-white/[0.02] text-fg/60"
+                guessFields[key] ? "border-accent/35 bg-accent/[0.07] text-fg" : "border-white/[0.07] bg-white/2 text-fg/60"
               } ${isHost ? "cursor-pointer hover:border-white/15" : ""}`}
             >
               {label}
@@ -182,7 +182,7 @@ function SettingRow({ label, value, children }: { label: string; value: number; 
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between text-sm font-medium text-fg/80">
         <span>{label}</span>
-        <span className="min-w-[2rem] rounded-md bg-white/[0.06] px-2 py-0.5 text-center text-xs font-semibold tabular-nums text-fg">{value}</span>
+        <span className="min-w-8 rounded-md bg-white/6 px-2 py-0.5 text-center text-xs font-semibold tabular-nums text-fg">{value}</span>
       </div>
       {children}
     </div>

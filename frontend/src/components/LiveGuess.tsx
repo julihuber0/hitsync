@@ -35,7 +35,7 @@ export default function LiveGuess({ player, fields, guess }: Props) {
       ) : (
         <dl className="grid gap-2 sm:grid-cols-2">
           {rows.map(({ key, label }) => (
-            <div key={key} className="min-w-0 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2">
+            <div key={key} className="min-w-0 rounded-xl border border-white/6 bg-black/20 px-3 py-2">
               <dt className="text-[11px] font-medium text-fg/45">{label}</dt>
               <dd className={`truncate text-sm font-medium ${guess![key] ? "text-fg" : "text-fg/25"}`}>{guess![key] || "—"}</dd>
             </div>

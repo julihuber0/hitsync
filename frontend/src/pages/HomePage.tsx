@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { api, ApiError } from "../api/client";
 import { saveIdentity, loadRecentGames, loadPlayerToken } from "../api/identity";
 import { useAppStore } from "../store/appStore";
@@ -114,7 +114,7 @@ export default function HomePage() {
 
           <form onSubmit={joinGame} className="surface flex flex-col gap-5 p-6 sm:p-7">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-accent2">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/6 text-accent2">
                 <Users size={19} />
               </span>
               <h2 className="text-lg font-semibold tracking-tight">{t("home.joinCard.title")}</h2>
@@ -143,7 +143,7 @@ export default function HomePage() {
         {recentGames.length > 0 && (
           <section className="surface mx-auto mt-5 max-w-3xl animate-fade-in p-6 sm:p-7">
             <h3 className="eyebrow mb-3">{t("home.recentGames.title")}</h3>
-            <ul className="flex flex-col divide-y divide-white/[0.06]">
+            <ul className="flex flex-col divide-y divide-white/6">
               {recentGames.map((g) => (
                 <li key={g.gameId} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                   <span className="font-mono text-sm tracking-[0.2em] text-fg/70">{g.inviteCode}</span>

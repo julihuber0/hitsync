@@ -90,12 +90,12 @@ export default function GameBoard() {
         {/* Now playing */}
         <div className="flex flex-col items-center gap-3 pt-2">
           <div className="relative flex h-24 w-24 items-center justify-center">
-            <div className={`absolute inset-0 rounded-full bg-gradient-to-br from-accent/30 to-accent-end/30 blur-2xl transition-opacity duration-700 ${playing ? "opacity-100" : "opacity-40"}`} />
+            <div className={`absolute inset-0 rounded-full bg-linear-to-br from-accent/30 to-accent-end/30 blur-2xl transition-opacity duration-700 ${playing ? "opacity-100" : "opacity-40"}`} />
             <div className="surface relative flex h-24 w-24 items-center justify-center gap-[5px] rounded-[28px]">
               {[0.55, 0.9, 0.7, 1, 0.6].map((height, i) => (
                 <span
                   key={i}
-                  className={`w-[5px] origin-bottom rounded-full bg-gradient-to-t from-accent to-accent-end ${playing ? "animate-equalizer" : ""}`}
+                  className={`w-[5px] origin-bottom rounded-full bg-linear-to-t from-accent to-accent-end ${playing ? "animate-equalizer" : ""}`}
                   style={{
                     height: `${height * 40}px`,
                     animationDelay: `${i * -0.18}s`,
@@ -109,7 +109,7 @@ export default function GameBoard() {
           </div>
 
           {preparing && (
-            <div role="status" className="flex items-center gap-2.5 rounded-full border border-white/[0.07] bg-white/[0.04] px-4 py-2 text-sm text-fg/70" aria-live="polite">
+            <div role="status" className="flex items-center gap-2.5 rounded-full border border-white/[0.07] bg-white/4 px-4 py-2 text-sm text-fg/70" aria-live="polite">
               <span className="spinner" aria-hidden="true" />
               {t(audioState === "ready" ? "board.waitingForPlayers" : "board.loadingTrack")}
             </div>
@@ -135,7 +135,7 @@ export default function GameBoard() {
         {otherPlayers.length > 0 && (
           <section className="space-y-3">
             <h2 className="eyebrow px-1">{t("board.otherTimelines")}</h2>
-            <div className="grid grid-cols-[minmax(0,1fr)] gap-3 xl:grid-cols-[repeat(2,minmax(0,1fr))]">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-3 xl:grid-cols-2">
               {otherPlayers.map((player) => {
                 const isStealTarget = selectingSteal && player.id === activePlayer?.id;
                 const isActivePlayer = player.id === activePlayer?.id;
@@ -143,7 +143,7 @@ export default function GameBoard() {
                   <article
                     key={player.id}
                     className={`surface min-w-0 rounded-2xl p-4 transition-all duration-300 ${
-                      isStealTarget ? "border-accent/60 shadow-glow" : isActivePlayer ? "border-accent/30 bg-accent/[0.05]" : ""
+                      isStealTarget ? "border-accent/60 shadow-glow" : isActivePlayer ? "border-accent/30 bg-accent/5" : ""
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
@@ -269,7 +269,7 @@ export default function GameBoard() {
         )}
       </div>
 
-      <aside className="w-full shrink-0 p-3 pt-0 sm:p-5 sm:pt-0 lg:w-80 lg:border-l lg:border-white/[0.06] lg:bg-white/[0.015] lg:p-5 lg:backdrop-blur-xl">
+      <aside className="w-full shrink-0 p-3 pt-0 sm:p-5 sm:pt-0 lg:w-80 lg:border-l lg:border-white/6 lg:bg-white/1.5 lg:p-5 lg:backdrop-blur-xl">
         <div className="lg:sticky lg:top-5">
           <h2 className="eyebrow mb-3 px-1">{t("lobby.players")}</h2>
           <PlayerList

@@ -76,7 +76,7 @@ export default function Timeline({
     <>
       {isPlacement && (
         <span
-          className="absolute inset-y-2 left-1/2 w-1 -translate-x-1/2 rounded-full bg-gradient-to-b from-accent to-accent-end shadow-glow-sm"
+          className="absolute inset-y-2 left-1/2 w-1 -translate-x-1/2 rounded-full bg-linear-to-b from-accent to-accent-end shadow-glow-sm"
           aria-label="submitted placement"
         />
       )}
@@ -119,13 +119,13 @@ export default function Timeline({
         aria-label={`slot-${slot}`}
         className={`group/slot relative flex w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ease-game ${cardHeight} ${
           isSelected
-            ? "w-12 bg-gradient-to-b from-accent/40 to-accent-end/30 shadow-glow ring-2 ring-accent"
+            ? "w-12 bg-linear-to-b from-accent/40 to-accent-end/30 shadow-glow ring-2 ring-accent"
             : isTaken
-              ? "cursor-not-allowed border border-white/10 bg-white/[0.04]"
+              ? "cursor-not-allowed border border-white/10 bg-white/4"
               : isDisabled
-                ? "cursor-not-allowed border border-transparent bg-white/[0.015]"
+                ? "cursor-not-allowed border border-transparent bg-white/1.5"
                 : clickable
-                  ? "border border-dashed border-white/15 bg-white/[0.02] hover:w-11 hover:border-accent/60 hover:bg-accent/10"
+                  ? "border border-dashed border-white/15 bg-white/2 hover:w-11 hover:border-accent/60 hover:bg-accent/10"
                   : "border-transparent bg-transparent"
         }`}
       >
@@ -147,17 +147,17 @@ export default function Timeline({
         {timeline.map((card, i) => (
           <div key={card.trackId + i} className="flex items-center gap-1.5">
             <div
-              className={`relative flex shrink-0 flex-col items-center justify-center overflow-hidden rounded-2xl border bg-gradient-to-b from-elevated to-surface px-2 text-center shadow-card transition-all duration-200 ease-game ${
+              className={`relative flex shrink-0 flex-col items-center justify-center overflow-hidden rounded-2xl border bg-linear-to-b from-elevated to-surface px-2 text-center shadow-card transition-all duration-200 ease-game ${
                 compact ? "w-[68px]" : size === "large" ? "w-28 sm:w-32" : "w-24"
               } ${cardHeight} ${
                 highlightSlot === i && highlightCorrect === true
                   ? "border-success/70 shadow-[0_0_24px_-4px_rgba(52,211,153,0.5)]"
                   : highlightSlot === i && highlightCorrect === false
                     ? "border-danger/70 shadow-[0_0_24px_-4px_rgba(251,113,133,0.5)]"
-                    : "border-white/[0.08]"
+                    : "border-white/8"
               }`}
             >
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/25 to-transparent" />
               <span
                 className={`brand-text font-bold tabular-nums tracking-tight ${
                   compact ? "text-lg" : size === "large" ? "text-3xl" : "text-2xl"

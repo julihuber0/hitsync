@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS build
+FROM golang:1.27-alpine AS build
 WORKDIR /src
 RUN apk add --no-cache ca-certificates
 COPY go.mod go.sum ./
@@ -8,7 +8,7 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w" -trimpath -o /out/server ./cmd/serve
 
 # Alpine rather than distroless: the backend runs FFmpeg to transcode tracks
 # for player downloads.
-FROM alpine:3.21
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates ffmpeg su-exec
 COPY --from=build /out/server /app/server
 COPY entrypoint.sh /app/entrypoint.sh

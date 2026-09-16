@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 // Local dev only (§ docs/local-development.md): the production build is
 // static files served by nginx, which proxies nothing itself — Traefik
@@ -9,22 +10,13 @@ import react from "@vitejs/plugin-react";
 const BACKEND_URL = process.env.VITE_BACKEND_URL ?? "http://localhost:8080";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
     proxy: {
       "/api": { target: BACKEND_URL, changeOrigin: true },
       "/healthz": { target: BACKEND_URL, changeOrigin: true },
       "/ws": { target: BACKEND_URL, ws: true, changeOrigin: true },
-    },
-  },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          admin: ["./src/pages/AdminPage.tsx"],
-        },
-      },
     },
   },
   test: {

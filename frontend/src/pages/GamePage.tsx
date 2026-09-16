@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { useGameStore } from "../store/gameStore";
 import { loadPlayerToken } from "../api/identity";
 import Lobby from "../components/Lobby";

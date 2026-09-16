@@ -1,5 +1,5 @@
 import { useEffect, Suspense, lazy } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import { useAppStore } from "./store/appStore";
 import AccessGatePage from "./pages/AccessGatePage";
 import HomePage from "./pages/HomePage";

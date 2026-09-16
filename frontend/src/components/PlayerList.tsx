@@ -54,7 +54,7 @@ const PlayerRow = memo(function PlayerRow({ player, isYou, isHost, isActive, var
   return (
     <li
       className={`group relative flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-all duration-200 ${
-        isActive ? "border-accent/40 bg-gradient-to-r from-accent/[0.14] to-accent-end/[0.06] shadow-glow-sm" : "border-transparent bg-white/[0.03] hover:bg-white/[0.05]"
+        isActive ? "border-accent/40 bg-linear-to-r from-accent/[0.14] to-accent-end/6 shadow-glow-sm" : "border-transparent bg-white/3 hover:bg-white/5"
       }`}
     >
       <span className="relative">
@@ -91,7 +91,7 @@ const PlayerRow = memo(function PlayerRow({ player, isYou, isHost, isActive, var
           <button
             onClick={() => onAdjustTokens(-1)}
             aria-label={t("board.removeToken")}
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-fg/70 transition-all duration-150 hover:border-white/20 hover:bg-white/[0.1] hover:text-fg active:scale-90 disabled:opacity-30"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/4 text-fg/70 transition-all duration-150 hover:border-white/20 hover:bg-white/10 hover:text-fg active:scale-90 disabled:opacity-30"
             disabled={player.tokens <= 0}
           >
             <Minus size={13} />
@@ -99,7 +99,7 @@ const PlayerRow = memo(function PlayerRow({ player, isYou, isHost, isActive, var
           <button
             onClick={() => onAdjustTokens(1)}
             aria-label={t("board.addToken")}
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-fg/70 transition-all duration-150 hover:border-white/20 hover:bg-white/[0.1] hover:text-fg active:scale-90"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/4 text-fg/70 transition-all duration-150 hover:border-white/20 hover:bg-white/10 hover:text-fg active:scale-90"
           >
             <Plus size={13} />
           </button>

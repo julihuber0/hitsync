@@ -15,7 +15,7 @@ export default function LanguageToggle({ className = "" }: { className?: string 
       type="button"
       onClick={toggle}
       aria-label="Toggle language"
-      className={`inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 text-xs font-semibold tracking-wide text-fg/70 transition-all duration-150 hover:border-white/20 hover:bg-white/[0.08] hover:text-fg ${className}`}
+      className={`inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 bg-white/4 px-2.5 text-xs font-semibold tracking-wide text-fg/70 transition-all duration-150 hover:border-white/20 hover:bg-white/8 hover:text-fg ${className}`}
     >
       <Globe size={14} className="text-fg/50" />
       {current === "en" ? "DE" : "EN"}

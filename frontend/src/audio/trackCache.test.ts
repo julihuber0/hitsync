@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TrackCache } from "./trackCache";
 
 function okResponse(): Response {
-  return new Response(new Blob(["mp3"], { type: "audio/mpeg" }), { status: 200 });
+  // A string body: jsdom's Blob can't be streamed by Node's Response.
+  return new Response("mp3", { status: 200, headers: { "Content-Type": "audio/mpeg" } });
 }
 
 describe("TrackCache", () => {

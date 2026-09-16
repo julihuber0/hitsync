@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useGameStore } from "../store/gameStore";
 import Confetti from "./Confetti";
@@ -31,7 +31,7 @@ export default function GameOverScreen() {
 
       <div className="mx-auto mt-12 flex max-w-4xl animate-fade-in flex-col items-center text-center">
         <div className="relative mb-5">
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-gold/40 to-accent/30 blur-2xl" />
+          <div className="absolute inset-0 rounded-full bg-linear-to-br from-gold/40 to-accent/30 blur-2xl" />
           {winner ? (
             <div className="relative">
               <Avatar name={winner.name} colour={winner.colour} size={88} />
@@ -77,7 +77,7 @@ export default function GameOverScreen() {
                     <span
                       key={c.trackId + i}
                       title={`${c.title} — ${c.artist}`}
-                      className="rounded-lg border border-white/[0.07] bg-white/[0.04] px-2.5 py-1 text-xs font-semibold tabular-nums text-fg/80"
+                      className="rounded-lg border border-white/[0.07] bg-white/4 px-2.5 py-1 text-xs font-semibold tabular-nums text-fg/80"
                     >
                       {c.year}
                     </span>

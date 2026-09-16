@@ -37,8 +37,8 @@ each gets its own player) and listen for echo.
 
 ## Dependencies
 
-- Go 1.23+
-- Node 22+
+- Go 1.26+
+- Node 22.12+ (or 24+)
 - FFmpeg on your PATH (or set `FFMPEG_PATH` in `.env.dev`)
 - Docker Compose v2
 - Navidrome reachable through the `NAVIDROME_*` values in `.env.dev`

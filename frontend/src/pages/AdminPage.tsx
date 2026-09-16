@@ -76,13 +76,13 @@ export default function AdminPage() {
             Admin
           </span>
         </div>
-        <nav className="flex gap-1 rounded-xl border border-white/[0.07] bg-white/[0.03] p-1">
+        <nav className="flex gap-1 rounded-xl border border-white/[0.07] bg-white/3 p-1">
           {(["overview", "games"] as Tab[]).map((tabName) => (
             <button
               key={tabName}
               onClick={() => setTab(tabName)}
               className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-all duration-150 ${
-                tab === tabName ? "bg-white/[0.1] text-fg shadow-card" : "text-fg/55 hover:text-fg"
+                tab === tabName ? "bg-white/10 text-fg shadow-card" : "text-fg/55 hover:text-fg"
               }`}
             >
               {t(`admin.nav.${tabName}`)}
@@ -163,7 +163,7 @@ function OverviewTab() {
           <div key={label} className="surface rounded-2xl p-4">
             <div className="text-xs text-fg/50">{label}</div>
             <div
-              className={`mt-1.5 break-words font-semibold tabular-nums tracking-tight ${typeof value === "number" ? "text-2xl" : "text-sm leading-6"}`}
+              className={`mt-1.5 wrap-break-word font-semibold tabular-nums tracking-tight ${typeof value === "number" ? "text-2xl" : "text-sm leading-6"}`}
             >
               {String(value)}
             </div>
@@ -220,7 +220,7 @@ function GamesTab() {
   return (
     <div className="surface overflow-hidden p-0">
       <table className="w-full text-left">
-        <thead className="border-b border-white/[0.06] text-[11px] uppercase tracking-[0.12em] text-fg/45">
+        <thead className="border-b border-white/6 text-[11px] uppercase tracking-[0.12em] text-fg/45">
           <tr>
             <th className="px-5 py-3 font-semibold">{t("admin.games.inviteCode")}</th>
             <th className="px-5 py-3 font-semibold">{t("admin.games.phase")}</th>
@@ -229,9 +229,9 @@ function GamesTab() {
             <th className="px-5 py-3" />
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/[0.05]">
+        <tbody className="divide-y divide-white/5">
           {games.map((g) => (
-            <tr key={g.gameId} className="transition-colors hover:bg-white/[0.03]">
+            <tr key={g.gameId} className="transition-colors hover:bg-white/3">
               <td className="px-5 py-3 font-mono tracking-[0.15em]">{g.inviteCode}</td>
               <td className="px-5 py-3">
                 <span className="chip">{g.phase}</span>

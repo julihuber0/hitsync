@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router";
 import { api, ApiError, type GamePreview } from "../api/client";
 import { saveIdentity } from "../api/identity";
 import { audioPlayer } from "../audio/instance";
