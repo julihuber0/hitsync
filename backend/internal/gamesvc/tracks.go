@@ -40,7 +40,7 @@ func (ts *TrackSource) Draw(exclude map[string]bool) (*Candidate, error) {
 	}
 	year, source, _ := c.GameYear() // playable cards always have a year
 	return &Candidate{
-		Card:        game.Card{TrackID: c.NavidromeID, Title: c.Title, Artist: c.Artist, Year: year},
+		Card:        game.Card{TrackID: c.NavidromeID, Title: c.Title, Artist: c.Artist, Album: c.Album, Year: year},
 		DurationSec: c.DurationSec,
 		YearSource:  source,
 	}, nil

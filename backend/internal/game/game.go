@@ -159,10 +159,10 @@ const MaxTokensLimit = 10
 // SettingsUpdate carries lobby setting changes; nil fields are left as they
 // are.
 type SettingsUpdate struct {
-	TargetCards     *int
-	StartTokens     *int
-	MaxTokens       *int
-	EnableSongGuess *bool
+	TargetCards *int
+	StartTokens *int
+	MaxTokens   *int
+	GuessFields *GuessFields
 }
 
 // UpdateSettings applies lobby setting changes (§13.1 update_settings), host
@@ -188,8 +188,8 @@ func (g *Game) UpdateSettings(playerID string, u SettingsUpdate) error {
 	if u.StartTokens != nil {
 		next.StartTokens = *u.StartTokens
 	}
-	if u.EnableSongGuess != nil {
-		next.EnableSongGuess = *u.EnableSongGuess
+	if u.GuessFields != nil {
+		next.GuessFields = *u.GuessFields
 	}
 	if next.TargetCards < 1 || next.MaxTokens < 1 || next.MaxTokens > MaxTokensLimit ||
 		next.StartTokens < 0 || next.StartTokens > next.MaxTokens {

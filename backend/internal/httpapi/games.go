@@ -19,7 +19,6 @@ func (a *API) handleConfig(w http.ResponseWriter, r *http.Request) {
 		"defaultStartTokens": a.cfg.DefaultStartTokens,
 		"defaultMaxTokens":   a.cfg.DefaultMaxTokens,
 		"maxTokensLimit":     game.MaxTokensLimit,
-		"songGuessAvailable": a.cfg.RuleEnableSongGuess,
 	})
 }
 
@@ -56,10 +55,10 @@ func boolStatus(ok bool) string {
 type createGameRequest struct {
 	DisplayName string `json:"displayName"`
 	Settings    *struct {
-		TargetCards     *int  `json:"targetCards"`
-		StartTokens     *int  `json:"startTokens"`
-		MaxTokens       *int  `json:"maxTokens"`
-		EnableSongGuess *bool `json:"enableSongGuess"`
+		TargetCards *int              `json:"targetCards"`
+		StartTokens *int              `json:"startTokens"`
+		MaxTokens   *int              `json:"maxTokens"`
+		GuessFields *game.GuessFields `json:"guessFields"`
 	} `json:"settings"`
 }
 
@@ -83,7 +82,7 @@ func (a *API) handleCreateGame(w http.ResponseWriter, r *http.Request) {
 	if req.Settings != nil {
 		overrides = game.SettingsUpdate{
 			TargetCards: req.Settings.TargetCards, StartTokens: req.Settings.StartTokens,
-			MaxTokens: req.Settings.MaxTokens, EnableSongGuess: req.Settings.EnableSongGuess,
+			MaxTokens: req.Settings.MaxTokens, GuessFields: req.Settings.GuessFields,
 		}
 	}
 

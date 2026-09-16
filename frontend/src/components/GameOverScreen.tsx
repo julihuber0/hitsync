@@ -45,7 +45,8 @@ export default function GameOverScreen() {
             </span>
           )}
         </div>
-        <p className={`text-4xl font-bold tracking-tight sm:text-5xl ${winner ? "brand-text" : "text-fg/80"}`}>
+        {/* Gradient text only paints inside the line box; extra leading and padding keep descenders visible. */}
+        <p className={`pb-[0.12em] text-4xl font-bold leading-[1.2] tracking-tight sm:text-5xl sm:leading-[1.2] ${winner ? "brand-text" : "text-fg/80"}`}>
           {winner ? t("gameOver.winner", { name: winner.name }) : t("gameOver.noWinner")}
         </p>
       </div>

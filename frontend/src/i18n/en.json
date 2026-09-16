@@ -62,7 +62,12 @@
     "targetCards_other": "{{count}} cards to win",
     "maxTokens": "Maximum tokens",
     "startTokens": "Starting tokens",
-    "songGuess": "Song guess bonus",
+    "guessFields": "Bonus token for naming",
+    "guessFieldsHint": "The player whose turn it is earns a token by getting every selected part right. Select nothing to turn the bonus off.",
+    "guessTitle": "Title",
+    "guessArtist": "Artist",
+    "guessAlbum": "Album",
+    "guessYear": "Release year",
     "invite": "Invite",
     "inviteCode": "Invite code",
     "copyLink": "Copy invite link",
@@ -99,9 +104,13 @@
     "addToken": "Add token",
     "removeToken": "Remove token",
     "guessTitle": "Name that tune",
-    "guessHint": "Title and artist both right earns a token. Checked at the reveal; you can change it until then.",
+    "guessHint": "Get every field right to earn a token. Checked at the reveal; you can change it until then.",
     "guessTitleLabel": "Title",
-    "guessArtistLabel": "Artist"
+    "guessArtistLabel": "Artist",
+    "guessAlbumLabel": "Album",
+    "guessYearLabel": "Release year",
+    "liveGuessBy": "{{name}}'s guess",
+    "liveGuessEmpty": "Nothing typed yet"
   },
   "reveal": {
     "title": "Title",
@@ -117,7 +126,8 @@
     "continuing": "Next turn starting…",
     "songGuessBy": "{{name}}'s guess",
     "songGuessAtMax": "Correct, but already at the token limit",
-    "songGuessWrong": "Not quite — no token"
+    "songGuessWrong": "Not quite — no token",
+    "album": "Album"
   },
   "gameOver": {
     "title": "Game over",

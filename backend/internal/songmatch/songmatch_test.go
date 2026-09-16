@@ -76,3 +76,43 @@ func TestArtist(t *testing.T) {
 		}
 	}
 }
+
+func TestAlbum(t *testing.T) {
+	cases := []struct {
+		guess, actual string
+		want          bool
+	}{
+		{"Thriller", "Thriller (25th Anniversary Edition)", true},
+		{"Nevermind", "Nevermind [Remastered]", true},
+		{"Nevermind", "Nevermind - Deluxe Edition", true},
+		{"Rumors", "Rumours", true},
+		{"Joshua Tree", "The Joshua Tree", true},
+		{"Bad", "Thriller", false},
+		{"", "Thriller", false},
+	}
+	for _, c := range cases {
+		if got := Album(c.guess, c.actual); got != c.want {
+			t.Errorf("Album(%q, %q) = %v, want %v", c.guess, c.actual, got, c.want)
+		}
+	}
+}
+
+func TestYear(t *testing.T) {
+	cases := []struct {
+		guess  string
+		actual int
+		want   bool
+	}{
+		{"1985", 1985, true},
+		{" 1985 ", 1985, true},
+		{"1986", 1985, false},
+		{"85", 1985, false},
+		{"", 1985, false},
+		{"abc", 1985, false},
+	}
+	for _, c := range cases {
+		if got := Year(c.guess, c.actual); got != c.want {
+			t.Errorf("Year(%q, %d) = %v, want %v", c.guess, c.actual, got, c.want)
+		}
+	}
+}

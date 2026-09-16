@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy, Check, Play, Users } from "lucide-react";
+import { Coins, Copy, Check, Play, Users } from "lucide-react";
+import type { GuessFields } from "../ws/protocol";
 import { useGameStore } from "../store/gameStore";
 import { useAppStore } from "../store/appStore";
 import PlayerList from "./PlayerList";
@@ -107,7 +108,13 @@ function SettingsPanel({ isHost }: { isHost: boolean }) {
   const state = useGameStore((s) => s.state)!;
   const socket = useGameStore((s) => s.socket);
   const maxTokensLimit = useAppStore((s) => s.config?.maxTokensLimit ?? 10);
-  const { targetCards, startTokens, maxTokens, enableSongGuess } = state.settings;
+  const { targetCards, startTokens, maxTokens, guessFields } = state.settings;
+  const guessOptions: Array<{ key: keyof GuessFields; label: string }> = [
+    { key: "title", label: t("lobby.guessTitle") },
+    { key: "artist", label: t("lobby.guessArtist") },
+    { key: "album", label: t("lobby.guessAlbum") },
+    { key: "year", label: t("lobby.guessYear") },
+  ];
 
   return (
     <div className="flex flex-col gap-5">
@@ -138,16 +145,34 @@ function SettingsPanel({ isHost }: { isHost: boolean }) {
           onChange={(e) => socket?.updateSettings({ startTokens: Number(e.target.value) })}
         />
       </SettingRow>
-      <label className="flex items-center justify-between gap-4 border-t border-white/[0.06] pt-4 text-sm font-medium text-fg/80">
-        {t("lobby.songGuess")}
-        <input
-          type="checkbox"
-          checked={enableSongGuess}
-          disabled={!isHost}
-          onChange={(e) => socket?.updateSettings({ enableSongGuess: e.target.checked })}
-          className="switch"
-        />
-      </label>
+      <div className="flex flex-col gap-3 border-t border-white/[0.06] pt-4">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-medium text-fg/80">
+            <Coins size={15} className="text-gold" />
+            {t("lobby.guessFields")}
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-fg/45">{t("lobby.guessFieldsHint")}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {guessOptions.map(({ key, label }) => (
+            <label
+              key={key}
+              className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
+                guessFields[key] ? "border-accent/35 bg-accent/[0.07] text-fg" : "border-white/[0.07] bg-white/[0.02] text-fg/60"
+              } ${isHost ? "cursor-pointer hover:border-white/15" : ""}`}
+            >
+              {label}
+              <input
+                type="checkbox"
+                checked={guessFields[key]}
+                disabled={!isHost}
+                onChange={(e) => socket?.updateSettings({ guessFields: { ...guessFields, [key]: e.target.checked } })}
+                className="switch"
+              />
+            </label>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

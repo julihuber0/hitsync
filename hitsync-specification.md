@@ -116,22 +116,30 @@ The song keeps looping throughout and stops at the reveal.
 
 ### Song guess bonus
 
-When the lobby's song guess bonus is enabled, the active player can type the
-song's title and artist (`song_guess`) at any time during `PLACING` and
-`CHALLENGING`; each message replaces the previous guess. At the reveal the
-guess is checked, independently of placement and stealing: title and artist
-both correct earns the active player one token, up to the game's maximum
-(set by the host in the lobby, 1–10). Nobody else gains or loses a token from
-the guess. The reveal shows the guess and which parts were correct to all
-players.
+In the lobby the host selects which parts of the song the active player must
+name to earn a bonus token: any combination of title, artist, album, and
+release year (default `DEFAULT_GUESS_FIELDS=title,artist`). Selecting nothing
+turns the bonus off; the host can still adjust tokens by hand.
+
+During `PLACING` and `CHALLENGING` the active player gets one input per
+selected field (`song_guess`; each message replaces the previous guess). Every
+change is relayed immediately to all other players (`song_guess_update`, and
+`currentTurn.songGuess` in state snapshots), who watch it being typed.
+
+At the reveal the guess is checked, independently of placement and stealing:
+if every selected field is correct, the active player earns one token, up to
+the game's maximum (set by the host in the lobby, 1–10). Nobody else gains or
+loses a token from the guess. The reveal card shows the song's album and the
+guess with a result per selected field to all players.
 
 Matching (`internal/songmatch`) ignores case, accents, punctuation, spacing,
-a leading article ("Beatles"), and "&"/"n" versus "and". Bracketed parts and
-anything after " - " (e.g. "(2023 Remix)", "- Live") may be left out. Typos
-are tolerated by length: names of up to 4 characters must match exactly, 5–11
-characters allow 1 mistake, 12–17 allow 2, and longer names about one per 6
-characters. For a credit with several artists, naming any one of them is
-enough. The host can still adjust tokens by hand.
+a leading article ("Beatles"), and "&"/"n" versus "and". For titles and albums,
+bracketed parts and anything after " - " (e.g. "(2023 Remix)", "(Deluxe
+Edition)", "- Live") may be left out. Typos are tolerated by length: names of
+up to 4 characters must match exactly, 5–11 characters allow 1 mistake, 12–17
+allow 2, and longer names about one per 6 characters. For a credit with
+several artists, naming any one of them is enough. The year must be exactly
+the card's year (`hitsyncyear` if set, otherwise Navidrome's).
 
 A game can start with a single player (`MIN_PLAYERS=1`, the default). With
 nobody else holding tokens, `CHALLENGING` is skipped and every placement goes

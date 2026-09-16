@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/julianhuber/hitsync/backend/internal/game"
 )
 
 // Config holds every environment-configurable setting for the backend.
@@ -46,13 +47,15 @@ type Config struct {
 	CardsFile string `env:"CARDS_FILE" envDefault:"/config/cards.json"`
 
 	// Game rules and limits
-	MaxConcurrentGames   int           `env:"MAX_CONCURRENT_GAMES" envDefault:"10"`
-	MinPlayers           int           `env:"MIN_PLAYERS" envDefault:"1"` // 1 allows singleplayer
-	MaxPlayers           int           `env:"MAX_PLAYERS" envDefault:"12"`
-	DefaultTargetCards   int           `env:"DEFAULT_TARGET_CARDS" envDefault:"10"`
-	DefaultStartTokens   int           `env:"DEFAULT_START_TOKENS" envDefault:"2"`
-	DefaultMaxTokens     int           `env:"DEFAULT_MAX_TOKENS" envDefault:"5"`
-	RuleEnableSongGuess  bool          `env:"RULE_ENABLE_SONG_GUESS" envDefault:"true"`
+	MaxConcurrentGames int `env:"MAX_CONCURRENT_GAMES" envDefault:"10"`
+	MinPlayers         int `env:"MIN_PLAYERS" envDefault:"1"` // 1 allows singleplayer
+	MaxPlayers         int `env:"MAX_PLAYERS" envDefault:"12"`
+	DefaultTargetCards int `env:"DEFAULT_TARGET_CARDS" envDefault:"10"`
+	DefaultStartTokens int `env:"DEFAULT_START_TOKENS" envDefault:"2"`
+	DefaultMaxTokens   int `env:"DEFAULT_MAX_TOKENS" envDefault:"5"`
+	// DefaultGuessFields is what a new game's active player must name for
+	// the bonus token: any of title, artist, album, year. Empty disables it.
+	DefaultGuessFields   []string      `env:"DEFAULT_GUESS_FIELDS" envDefault:"title,artist" envSeparator:","`
 	TurnPlacementTimeout time.Duration `env:"TURN_PLACEMENT_TIMEOUT" envDefault:"90s"`
 	TurnChallengeWindow  time.Duration `env:"TURN_CHALLENGE_WINDOW" envDefault:"5s"`
 	RevealDuration       time.Duration `env:"REVEAL_DURATION" envDefault:"8s"`
@@ -125,6 +128,9 @@ func (c *Config) Validate() error {
 	if c.DefaultStartTokens < 0 || c.DefaultStartTokens > c.DefaultMaxTokens {
 		errs = append(errs, "DEFAULT_START_TOKENS must be between 0 and DEFAULT_MAX_TOKENS")
 	}
+	if _, err := ParseGuessFields(c.DefaultGuessFields); err != nil {
+		errs = append(errs, "DEFAULT_GUESS_FIELDS: "+err.Error())
+	}
 	if c.MinPlayers < 1 {
 		errs = append(errs, "MIN_PLAYERS must be at least 1")
 	}
@@ -141,6 +147,27 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid configuration:\n  - %s", strings.Join(errs, "\n  - "))
 	}
 	return nil
+}
+
+// ParseGuessFields turns DEFAULT_GUESS_FIELDS entries into a selection.
+func ParseGuessFields(names []string) (game.GuessFields, error) {
+	var f game.GuessFields
+	for _, name := range names {
+		switch strings.ToLower(strings.TrimSpace(name)) {
+		case "":
+		case "title":
+			f.Title = true
+		case "artist":
+			f.Artist = true
+		case "album":
+			f.Album = true
+		case "year":
+			f.Year = true
+		default:
+			return f, fmt.Errorf("unknown field %q (use title, artist, album, year)", name)
+		}
+	}
+	return f, nil
 }
 
 // isLocalDomain reports whether domain (host, optionally with :port) refers

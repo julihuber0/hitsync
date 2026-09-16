@@ -62,7 +62,12 @@
     "targetCards_other": "{{count}} Karten zum Gewinnen",
     "maxTokens": "Maximale Tokens",
     "startTokens": "Start-Token",
-    "songGuess": "Songraten-Bonus",
+    "guessFields": "Bonus-Token für das Erraten von",
+    "guessFieldsHint": "Wer an der Reihe ist, bekommt einen Token, wenn alle ausgewählten Angaben stimmen. Nichts auswählen schaltet den Bonus ab.",
+    "guessTitle": "Titel",
+    "guessArtist": "Interpret",
+    "guessAlbum": "Album",
+    "guessYear": "Erscheinungsjahr",
     "invite": "Einladen",
     "inviteCode": "Einladungscode",
     "copyLink": "Einladungslink kopieren",
@@ -99,9 +104,13 @@
     "addToken": "Token hinzufügen",
     "removeToken": "Token entfernen",
     "guessTitle": "Errate den Song",
-    "guessHint": "Titel und Interpret richtig bringt einen Token. Geprüft wird beim Aufdecken, bis dahin kannst du es noch ändern.",
+    "guessHint": "Stimmen alle Felder, gibt es einen Token. Geprüft wird beim Aufdecken, bis dahin kannst du es noch ändern.",
     "guessTitleLabel": "Titel",
-    "guessArtistLabel": "Interpret"
+    "guessArtistLabel": "Interpret",
+    "guessAlbumLabel": "Album",
+    "guessYearLabel": "Erscheinungsjahr",
+    "liveGuessBy": "Tipp von {{name}}",
+    "liveGuessEmpty": "Noch nichts eingegeben"
   },
   "reveal": {
     "title": "Titel",
@@ -117,7 +126,8 @@
     "continuing": "Nächste Runde startet…",
     "songGuessBy": "Tipp von {{name}}",
     "songGuessAtMax": "Richtig, aber das Token-Limit ist schon erreicht",
-    "songGuessWrong": "Leider nicht ganz — kein Token"
+    "songGuessWrong": "Leider nicht ganz — kein Token",
+    "album": "Album"
   },
   "gameOver": {
     "title": "Spiel vorbei",

@@ -27,6 +27,7 @@ type Card struct {
 	TrackID string
 	Title   string
 	Artist  string
+	Album   string
 	Year    int
 }
 
@@ -45,10 +46,26 @@ type Player struct {
 
 // Settings are the lobby-configurable game settings (§8.3).
 type Settings struct {
-	TargetCards     int
-	StartTokens     int
-	MaxTokens       int
-	EnableSongGuess bool
+	TargetCards int
+	StartTokens int
+	MaxTokens   int
+	// GuessFields selects what the active player must name to earn the
+	// song guess bonus token; none selected disables the bonus.
+	GuessFields GuessFields
+}
+
+// GuessFields selects the parts of a song the active player must name
+// correctly, all of them, to earn the song guess bonus token (§8.6).
+type GuessFields struct {
+	Title  bool `json:"title"`
+	Artist bool `json:"artist"`
+	Album  bool `json:"album"`
+	Year   bool `json:"year"`
+}
+
+// Any reports whether the song guess bonus is enabled at all.
+func (f GuessFields) Any() bool {
+	return f.Title || f.Artist || f.Album || f.Year
 }
 
 // Palette is the fixed 12-colour player palette (§8.3).

@@ -269,19 +269,16 @@ func (mg *ManagedGame) beginRevealing() {
 	}
 
 	// The song guess is independent of placement and stealing: only the
-	// active player's own title and artist decide their bonus token.
+	// active player's own guess decides their bonus token. Every field the
+	// host selected must be right; the others are not checked.
 	var guessResult *SongGuessResultView
-	if guess := mg.pendingSongGuess; guess != nil {
-		titleCorrect := songmatch.Title(guess.title, reveal.Card.Title)
-		artistCorrect := songmatch.Artist(guess.artist, reveal.Card.Artist)
+	if guess, fields := mg.pendingSongGuess, mg.g.Settings.GuessFields; guess != nil && fields.Any() {
+		result, allCorrect := evaluateSongGuess(guess, fields, reveal.Card)
 		if active := mg.g.Player(reveal.ActivePlayerID); active != nil {
-			reveal.ApplySongGuessReward(active, mg.g.Settings.MaxTokens, titleCorrect && artistCorrect)
+			reveal.ApplySongGuessReward(active, mg.g.Settings.MaxTokens, allCorrect)
 		}
-		guessResult = &SongGuessResultView{
-			Title: guess.title, Artist: guess.artist,
-			TitleCorrect: titleCorrect, ArtistCorrect: artistCorrect,
-			Correct: reveal.SongGuessCorrect, Awarded: reveal.SongGuessAwarded,
-		}
+		result.Correct, result.Awarded = reveal.SongGuessCorrect, reveal.SongGuessAwarded
+		guessResult = &result
 	}
 	mg.pendingSongGuess = nil
 
@@ -400,14 +397,14 @@ func (mg *ManagedGame) handlePlayAgain(hostID string) {
 	mg.broadcastState()
 }
 
-// maxGuessRunes bounds a stored song guess.
+// maxGuessRunes bounds each stored song guess field.
 const maxGuessRunes = 200
 
-// handleSongGuess stores the active player's title/artist guess. It may be
-// changed freely until the reveal checks it; sending two empty fields
-// withdraws it. The guess stays private until the reveal.
-func (mg *ManagedGame) handleSongGuess(c *ws.Conn, title, artist string) {
-	if !mg.g.Settings.EnableSongGuess || mg.g.Turn == nil || c.PlayerID != mg.g.Turn.ActivePlayerID {
+// handleSongGuess stores the active player's guess. It may be changed freely
+// until the reveal checks it; sending only empty fields withdraws it. Every
+// change is relayed to the other players so they can watch it being typed.
+func (mg *ManagedGame) handleSongGuess(c *ws.Conn, p ws.SongGuessPayload) {
+	if !mg.g.Settings.GuessFields.Any() || mg.g.Turn == nil || c.PlayerID != mg.g.Turn.ActivePlayerID {
 		mg.sendError(c, "invalid_song_guess", "only the active player may guess, when the song guess bonus is enabled")
 		return
 	}
@@ -417,12 +414,61 @@ func (mg *ManagedGame) handleSongGuess(c *ws.Conn, title, artist string) {
 		mg.sendError(c, "invalid_song_guess", "guesses are closed once the card is revealed")
 		return
 	}
-	title, artist = truncateRunes(strings.TrimSpace(title), maxGuessRunes), truncateRunes(strings.TrimSpace(artist), maxGuessRunes)
-	if title == "" && artist == "" {
-		mg.pendingSongGuess = nil
-		return
+	guess := &pendingSongGuess{
+		title:  truncateRunes(p.Title, maxGuessRunes),
+		artist: truncateRunes(p.Artist, maxGuessRunes),
+		album:  truncateRunes(p.Album, maxGuessRunes),
+		year:   truncateRunes(p.Year, 8),
 	}
-	mg.pendingSongGuess = &pendingSongGuess{title: title, artist: artist}
+	if strings.TrimSpace(guess.title+guess.artist+guess.album+guess.year) == "" {
+		guess = nil
+	}
+	mg.pendingSongGuess = guess
+
+	var update ws.SongGuessPayload
+	if guess != nil {
+		v := guess.view(mg.g.Settings.GuessFields)
+		update = ws.SongGuessPayload{Title: v.Title, Artist: v.Artist, Album: v.Album, Year: v.Year}
+	}
+	for playerID, other := range mg.conns {
+		if other != nil && playerID != c.PlayerID {
+			other.Send(ws.TypeSongGuessUpdate, update)
+		}
+	}
+}
+
+// evaluateSongGuess checks the fields the host selected against the card;
+// allCorrect requires every one of them to match.
+func evaluateSongGuess(guess *pendingSongGuess, fields game.GuessFields, card game.Card) (result SongGuessResultView, allCorrect bool) {
+	result = SongGuessResultView{
+		SongGuessView: guess.view(fields),
+		TitleCorrect:  fields.Title && songmatch.Title(guess.title, card.Title),
+		ArtistCorrect: fields.Artist && songmatch.Artist(guess.artist, card.Artist),
+		AlbumCorrect:  fields.Album && songmatch.Album(guess.album, card.Album),
+		YearCorrect:   fields.Year && songmatch.Year(guess.year, card.Year),
+	}
+	allCorrect = fields.Any() &&
+		(!fields.Title || result.TitleCorrect) && (!fields.Artist || result.ArtistCorrect) &&
+		(!fields.Album || result.AlbumCorrect) && (!fields.Year || result.YearCorrect)
+	return result, allCorrect
+}
+
+// view returns the guess limited to the fields the game asks for.
+func (g *pendingSongGuess) view(fields game.GuessFields) SongGuessView {
+	var v SongGuessView
+	if fields.Title {
+		v.Title = g.title
+	}
+	if fields.Artist {
+		v.Artist = g.artist
+	}
+	if fields.Album {
+		v.Album = g.album
+	}
+	if fields.Year {
+		v.Year = g.year
+	}
+	return v
 }
 
 func truncateRunes(s string, n int) string {

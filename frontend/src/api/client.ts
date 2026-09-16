@@ -1,3 +1,5 @@
+import type { GuessFields } from "../ws/protocol";
+
 export class ApiError extends Error {
   code: string;
   status: number;
@@ -42,7 +44,6 @@ export interface AppConfig {
   defaultStartTokens: number;
   defaultMaxTokens: number;
   maxTokensLimit: number;
-  songGuessAvailable: boolean;
 }
 
 export interface PlayerIdentity {
@@ -67,7 +68,7 @@ export const api = {
   logout: () => request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
   config: () => request<AppConfig>("/api/config"),
 
-  createGame: (displayName: string, settings?: { targetCards?: number; startTokens?: number; maxTokens?: number; enableSongGuess?: boolean }) =>
+  createGame: (displayName: string, settings?: { targetCards?: number; startTokens?: number; maxTokens?: number; guessFields?: GuessFields }) =>
     request<PlayerIdentity>("/api/games", { method: "POST", body: JSON.stringify({ displayName, settings }) }),
   joinGame: (inviteCode: string, displayName: string) =>
     request<PlayerIdentity>("/api/games/join", { method: "POST", body: JSON.stringify({ inviteCode, displayName }) }),

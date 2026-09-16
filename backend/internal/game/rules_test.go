@@ -40,7 +40,7 @@ func TestPlacementCorrectness(t *testing.T) {
 
 func newTestGame(t *testing.T, names ...string) (*Game, map[string]string) {
 	t.Helper()
-	g := New("game1", "ABC123", Settings{TargetCards: 10, StartTokens: 2, MaxTokens: 5, EnableSongGuess: false})
+	g := New("game1", "ABC123", Settings{TargetCards: 10, StartTokens: 2, MaxTokens: 5})
 	ids := map[string]string{}
 	for i, name := range names {
 		id := name + "-id"

@@ -1,6 +1,10 @@
 package gamesvc
 
-import "time"
+import (
+	"time"
+
+	"github.com/julianhuber/hitsync/backend/internal/game"
+)
 
 // Config holds the gameplay tunables the manager needs, sourced from
 // internal/config (§6.6, §6.5).
@@ -8,7 +12,7 @@ type Config struct {
 	MinPlayers, MaxPlayers, MaxConcurrentGames int
 	DefaultTargetCards, DefaultStartTokens     int
 	DefaultMaxTokens                           int
-	EnableSongGuess                            bool
+	DefaultGuessFields                         game.GuessFields
 
 	TurnPlacementTimeout         time.Duration
 	DisconnectedPlacementTimeout time.Duration // fixed 20s per §8.10

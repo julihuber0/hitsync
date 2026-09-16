@@ -7,6 +7,7 @@ package songmatch
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -20,6 +21,18 @@ import (
 // omitted from the guess.
 func Title(guess, actual string) bool {
 	return matchAny(titleVariants(guess), titleVariants(actual))
+}
+
+// Album reports whether guess names the album actual. Like titles, edition
+// suffixes such as "(Deluxe Edition)" or "[Disc 2]" may be left out.
+func Album(guess, actual string) bool {
+	return Title(guess, actual)
+}
+
+// Year reports whether guess is exactly the year actual.
+func Year(guess string, actual int) bool {
+	year, err := strconv.Atoi(strings.TrimSpace(guess))
+	return err == nil && year == actual
 }
 
 // Artist reports whether guess names the artist credit actual. For a credit

@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { GameSocket } from "../ws/socket";
 import { audioPlayer } from "../audio/instance";
 import type { AudioState } from "../audio/player";
-import type { ErrorPayload, RevealPayload, StatePayload, TrackPreparePayload, TrackStartPayload } from "../ws/protocol";
+import type { ErrorPayload, RevealPayload, SongGuess, StatePayload, TrackPreparePayload, TrackStartPayload } from "../ws/protocol";
 
 interface GameStore {
   socket: GameSocket | null;
@@ -10,6 +10,8 @@ interface GameStore {
   state: StatePayload | null;
   trackPrepare: TrackPreparePayload | null;
   trackStart: TrackStartPayload | null;
+  /** The active player's guess as they type it, for everyone else to watch. */
+  liveGuess: SongGuess | null;
   audioState: AudioState;
   autoplayBlocked: boolean;
   lastReveal: RevealPayload | null;
@@ -49,6 +51,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     state: null,
     trackPrepare: null,
     trackStart: null,
+    liveGuess: null,
     audioState: "idle",
     autoplayBlocked: false,
     lastReveal: null,
@@ -63,8 +66,11 @@ export const useGameStore = create<GameStore>((set, get) => {
         onState: (state) => {
           // Outside a running game nothing may still hold a downloaded track.
           if (state.phase === "LOBBY" || state.phase === "GAME_OVER") audioPlayer.teardown();
-          set({ state });
+          // Snapshots and live updates both carry the server's current guess,
+          // in order, so the latest one received is always right.
+          set({ state, liveGuess: state.currentTurn?.songGuess ?? null });
         },
+        onSongGuessUpdate: (guess) => set({ liveGuess: guess }),
         onTrackPreload: (p) => audioPlayer.preload(p.trackId, p.mediaUrl),
         onTrackPrepare: (trackPrepare) => {
           set({ trackPrepare, trackStart: null });
@@ -89,7 +95,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     disconnect: () => {
       get().socket?.close();
       audioPlayer.teardown();
-      set({ socket: null, connected: false, state: null, trackPrepare: null, trackStart: null, autoplayBlocked: false, lastReveal: null });
+      set({ socket: null, connected: false, state: null, trackPrepare: null, trackStart: null, liveGuess: null, autoplayBlocked: false, lastReveal: null });
     },
 
     clearError: () => set({ lastError: null }),

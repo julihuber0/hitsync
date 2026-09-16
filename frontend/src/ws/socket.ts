@@ -2,7 +2,9 @@ import { ClockSync, computeSample, type ClockSample } from "./clock";
 import type {
   Envelope,
   ErrorPayload,
+  GuessFields,
   RevealPayload,
+  SongGuess,
   StatePayload,
   TrackPreloadPayload,
   TrackPreparePayload,
@@ -13,6 +15,7 @@ import type {
 export interface SocketHandlers {
   onState?: (s: StatePayload) => void;
   onTrackPreload?: (p: TrackPreloadPayload) => void;
+  onSongGuessUpdate?: (p: SongGuess) => void;
   onTrackPrepare?: (p: TrackPreparePayload) => void;
   onTrackStart?: (p: TrackStartPayload) => void;
   onTrackStop?: (p: TrackStopPayload) => void;
@@ -106,6 +109,9 @@ export class GameSocket {
       case "state":
         this.handlers.onState?.(env.payload as StatePayload);
         break;
+      case "song_guess_update":
+        this.handlers.onSongGuessUpdate?.(env.payload as SongGuess);
+        break;
       case "track_preload":
         this.handlers.onTrackPreload?.(env.payload as TrackPreloadPayload);
         break;
@@ -156,7 +162,7 @@ export class GameSocket {
   ready(prepareId: string): void {
     this.send("ready", { prepareId });
   }
-  updateSettings(settings: { targetCards?: number; startTokens?: number; maxTokens?: number; enableSongGuess?: boolean }): void {
+  updateSettings(settings: { targetCards?: number; startTokens?: number; maxTokens?: number; guessFields?: GuessFields }): void {
     this.send("update_settings", settings);
   }
   startGame(): void {
@@ -165,8 +171,8 @@ export class GameSocket {
   placeCard(slotIndex: number): void {
     this.send("place_card", { slotIndex });
   }
-  songGuess(title: string, artist: string): void {
-    this.send("song_guess", { title, artist });
+  songGuess(guess: SongGuess): void {
+    this.send("song_guess", guess);
   }
   previewPlacement(slotIndex: number): void {
     this.send("place_preview", { slotIndex });

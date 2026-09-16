@@ -4,7 +4,11 @@
 // dispatches typed messages to a GameHandler.
 package ws
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/julianhuber/hitsync/backend/internal/game"
+)
 
 // Envelope is the wire shape used in both directions (§13).
 type Envelope struct {
@@ -42,9 +46,12 @@ const (
 	TypeTrackPrepare = "track_prepare"
 	TypeTrackStart   = "track_start"
 	TypeTrackStop    = "track_stop"
-	TypeReveal       = "reveal"
-	TypeError        = "error"
-	TypeKicked       = "kicked"
+	// TypeSongGuessUpdate carries the active player's current guess
+	// (SongGuessPayload) to everyone else as it is typed.
+	TypeSongGuessUpdate = "song_guess_update"
+	TypeReveal          = "reveal"
+	TypeError           = "error"
+	TypeKicked          = "kicked"
 )
 
 // HelloPayload authenticates the socket (§13.1).
@@ -71,10 +78,11 @@ type ReadyPayload struct {
 
 // UpdateSettingsPayload carries lobby setting changes.
 type UpdateSettingsPayload struct {
-	TargetCards     *int  `json:"targetCards,omitempty"`
-	StartTokens     *int  `json:"startTokens,omitempty"`
-	MaxTokens       *int  `json:"maxTokens,omitempty"`
-	EnableSongGuess *bool `json:"enableSongGuess,omitempty"`
+	TargetCards *int `json:"targetCards,omitempty"`
+	StartTokens *int `json:"startTokens,omitempty"`
+	MaxTokens   *int `json:"maxTokens,omitempty"`
+	// GuessFields replaces the whole selection when present.
+	GuessFields *game.GuessFields `json:"guessFields,omitempty"`
 }
 
 // PlaceCardPayload is the active player's placement submission.
@@ -82,12 +90,15 @@ type PlaceCardPayload struct {
 	SlotIndex int `json:"slotIndex"`
 }
 
-// SongGuessPayload is the active player's title/artist guess for the token
-// bonus. It replaces any earlier guess this turn and is checked at the
-// reveal (§8.6).
+// SongGuessPayload is the active player's guess for the token bonus. It
+// replaces any earlier guess this turn and is checked at the reveal (§8.6).
+// Year is the raw input; fields the game doesn't ask for are ignored. The
+// server relays it live to the other players as TypeSongGuessUpdate.
 type SongGuessPayload struct {
 	Title  string `json:"title"`
 	Artist string `json:"artist"`
+	Album  string `json:"album"`
+	Year   string `json:"year"`
 }
 
 // PlacePreviewPayload shares the active player's revisable intended

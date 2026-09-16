@@ -6,6 +6,7 @@ import Timeline from "./Timeline";
 import PlayerList from "./PlayerList";
 import RevealOverlay from "./RevealOverlay";
 import SongGuessPanel from "./SongGuessPanel";
+import LiveGuess from "./LiveGuess";
 import CountdownRing from "./CountdownRing";
 import { Check, RefreshCw, Volume2, Zap } from "lucide-react";
 import { Aurora, Avatar } from "./ui";
@@ -22,6 +23,7 @@ export default function GameBoard() {
   const retryAudio = useGameStore((s) => s.retryAudio);
   const resumeAudio = useGameStore((s) => s.resumeAudio);
   const lastReveal = useGameStore((s) => s.lastReveal);
+  const liveGuess = useGameStore((s) => s.liveGuess);
 
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [challengeSlot, setChallengeSlot] = useState<number | null>(null);
@@ -75,6 +77,8 @@ export default function GameBoard() {
   };
 
   const playing = audioState === "playing";
+  const guessFields = state.settings.guessFields;
+  const guessEnabled = guessFields.title || guessFields.artist || guessFields.album || guessFields.year;
   const preparing = (state.phase === "PREPARING" || audioState === "loading") && audioState !== "error";
 
   return (
@@ -108,6 +112,12 @@ export default function GameBoard() {
             <div role="status" className="flex items-center gap-2.5 rounded-full border border-white/[0.07] bg-white/[0.04] px-4 py-2 text-sm text-fg/70" aria-live="polite">
               <span className="spinner" aria-hidden="true" />
               {t(audioState === "ready" ? "board.waitingForPlayers" : "board.loadingTrack")}
+            </div>
+          )}
+
+          {!isActive && activePlayer && guessEnabled && (inPlacing || inChallenging) && (
+            <div className="flex w-full justify-center animate-fade-in">
+              <LiveGuess player={activePlayer} fields={guessFields} guess={liveGuess} />
             </div>
           )}
 
@@ -193,12 +203,13 @@ export default function GameBoard() {
           )}
 
           {/* The guess is independent of placing and stealing and stays editable until the reveal. */}
-          {isActive && state.settings.enableSongGuess && (inPlacing || inChallenging) && (
+          {isActive && guessEnabled && (inPlacing || inChallenging) && (
             <div className="mt-5 flex justify-center animate-fade-in">
               <SongGuessPanel
                 key={trackPrepare?.prepareId}
+                fields={state.settings.guessFields}
                 initial={turn?.songGuess ?? null}
-                onChange={(title, artist) => socket?.songGuess(title, artist)}
+                onChange={(guess) => socket?.songGuess(guess)}
               />
             </div>
           )}
@@ -273,7 +284,7 @@ export default function GameBoard() {
         </div>
       </aside>
 
-      {state.phase === "REVEALING" && lastReveal && <RevealOverlay reveal={lastReveal} players={state.players} />}
+      {state.phase === "REVEALING" && lastReveal && <RevealOverlay reveal={lastReveal} players={state.players} guessFields={guessFields} />}
     </div>
   );
 }

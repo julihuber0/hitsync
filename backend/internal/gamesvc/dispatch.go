@@ -21,7 +21,7 @@ func dispatchMessage(mg *ManagedGame, c *ws.Conn, env ws.Envelope) {
 		var p ws.UpdateSettingsPayload
 		if json.Unmarshal(env.Payload, &p) == nil {
 			mg.handleUpdateSettings(c.PlayerID, game.SettingsUpdate{
-				TargetCards: p.TargetCards, StartTokens: p.StartTokens, MaxTokens: p.MaxTokens, EnableSongGuess: p.EnableSongGuess,
+				TargetCards: p.TargetCards, StartTokens: p.StartTokens, MaxTokens: p.MaxTokens, GuessFields: p.GuessFields,
 			})
 		}
 
@@ -39,7 +39,7 @@ func dispatchMessage(mg *ManagedGame, c *ws.Conn, env ws.Envelope) {
 	case ws.TypeSongGuess:
 		var p ws.SongGuessPayload
 		if json.Unmarshal(env.Payload, &p) == nil {
-			mg.handleSongGuess(c, p.Title, p.Artist)
+			mg.handleSongGuess(c, p)
 		}
 
 	case ws.TypePlacePreview:

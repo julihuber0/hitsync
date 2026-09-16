@@ -85,10 +85,10 @@ func (m *Manager) CreateGame(displayName string, overrides game.SettingsUpdate) 
 	}
 	id := newID()
 	settings := game.Settings{
-		TargetCards:     m.cfg.DefaultTargetCards,
-		StartTokens:     m.cfg.DefaultStartTokens,
-		MaxTokens:       m.cfg.DefaultMaxTokens,
-		EnableSongGuess: m.cfg.EnableSongGuess,
+		TargetCards: m.cfg.DefaultTargetCards,
+		StartTokens: m.cfg.DefaultStartTokens,
+		MaxTokens:   m.cfg.DefaultMaxTokens,
+		GuessFields: m.cfg.DefaultGuessFields,
 	}
 
 	mg := newManagedGame(id, code, settings, m.trackSource, m.mediaSigner, m.trackWarmer, m.st, m.cfg, m.log, m)

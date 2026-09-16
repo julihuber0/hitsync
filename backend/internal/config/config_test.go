@@ -23,3 +23,16 @@ func TestOrigins(t *testing.T) {
 		})
 	}
 }
+
+func TestParseGuessFields(t *testing.T) {
+	f, err := ParseGuessFields([]string{"Title", " year "})
+	if err != nil || !f.Title || !f.Year || f.Artist || f.Album {
+		t.Errorf("ParseGuessFields = %+v, %v", f, err)
+	}
+	if f, err := ParseGuessFields(nil); err != nil || f.Any() {
+		t.Errorf("empty list = %+v, %v; want nothing selected", f, err)
+	}
+	if _, err := ParseGuessFields([]string{"genre"}); err == nil {
+		t.Error("expected error for unknown field")
+	}
+}

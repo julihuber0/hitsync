@@ -7,11 +7,12 @@ type CardView struct {
 	TrackID string `json:"trackId"`
 	Title   string `json:"title"`
 	Artist  string `json:"artist"`
+	Album   string `json:"album"`
 	Year    int    `json:"year"`
 }
 
 func cardView(c game.Card) CardView {
-	return CardView{TrackID: c.TrackID, Title: c.Title, Artist: c.Artist, Year: c.Year}
+	return CardView{TrackID: c.TrackID, Title: c.Title, Artist: c.Artist, Album: c.Album, Year: c.Year}
 }
 
 // PlayerView is one player's entry in the state snapshot (§13.3).
@@ -29,10 +30,10 @@ type PlayerView struct {
 
 // SettingsView mirrors game.Settings for the wire (§13.3).
 type SettingsView struct {
-	TargetCards     int  `json:"targetCards"`
-	StartTokens     int  `json:"startTokens"`
-	MaxTokens       int  `json:"maxTokens"`
-	EnableSongGuess bool `json:"enableSongGuess"`
+	TargetCards int              `json:"targetCards"`
+	StartTokens int              `json:"startTokens"`
+	MaxTokens   int              `json:"maxTokens"`
+	GuessFields game.GuessFields `json:"guessFields"`
 }
 
 // CurrentTurnView is the in-progress turn's visible state (§13.3).
@@ -50,8 +51,8 @@ type CurrentTurnView struct {
 	// who have placed (the slot itself stays hidden until the reveal).
 	StealClaims  []string `json:"stealClaims"`
 	StealsPlaced []string `json:"stealsPlaced"`
-	// SongGuess is the recipient's own pending guess; only ever set for the
-	// active player, so a reconnecting client can restore its input.
+	// SongGuess is the active player's current guess, visible to everyone
+	// (live updates arrive as song_guess_update between state snapshots).
 	SongGuess *SongGuessView `json:"songGuess"`
 }
 
@@ -142,8 +143,9 @@ func (mg *ManagedGame) buildState(forPlayerID string) StatePayload {
 				ct.HasPassed = append(ct.HasPassed, playerID)
 			}
 		}
-		if guess := mg.pendingSongGuess; guess != nil && forPlayerID == g.Turn.ActivePlayerID {
-			ct.SongGuess = &SongGuessView{Title: guess.title, Artist: guess.artist}
+		if guess := mg.pendingSongGuess; guess != nil {
+			v := guess.view(g.Settings.GuessFields)
+			ct.SongGuess = &v
 		}
 		currentTurn = ct
 	}
@@ -170,10 +172,10 @@ func (mg *ManagedGame) buildState(forPlayerID string) StatePayload {
 		InviteCode: mg.inviteCode,
 		Phase:      string(g.Phase),
 		Settings: SettingsView{
-			TargetCards:     g.Settings.TargetCards,
-			StartTokens:     g.Settings.StartTokens,
-			MaxTokens:       g.Settings.MaxTokens,
-			EnableSongGuess: g.Settings.EnableSongGuess,
+			TargetCards: g.Settings.TargetCards,
+			StartTokens: g.Settings.StartTokens,
+			MaxTokens:   g.Settings.MaxTokens,
+			GuessFields: g.Settings.GuessFields,
 		},
 		HostID:              g.HostID,
 		YouID:               forPlayerID,
@@ -207,22 +209,26 @@ type TokenChangeView struct {
 	Delta    int    `json:"delta"`
 }
 
-// SongGuessView is a title/artist guess.
+// SongGuessView is a song guess as typed; Year is the raw input.
 type SongGuessView struct {
 	Title  string `json:"title"`
 	Artist string `json:"artist"`
+	Album  string `json:"album"`
+	Year   string `json:"year"`
 }
 
 // SongGuessResultView reports the active player's song guess at the reveal
-// (§8.6). Awarded is false for a correct guess when the player already holds
-// the maximum number of tokens.
+// (§8.6). Only the fields in the game's GuessFields are checked; the others
+// are empty and false. Awarded is false for a correct guess when the player
+// already holds the maximum number of tokens.
 type SongGuessResultView struct {
-	Title         string `json:"title"`
-	Artist        string `json:"artist"`
-	TitleCorrect  bool   `json:"titleCorrect"`
-	ArtistCorrect bool   `json:"artistCorrect"`
-	Correct       bool   `json:"correct"`
-	Awarded       bool   `json:"awarded"`
+	SongGuessView
+	TitleCorrect  bool `json:"titleCorrect"`
+	ArtistCorrect bool `json:"artistCorrect"`
+	AlbumCorrect  bool `json:"albumCorrect"`
+	YearCorrect   bool `json:"yearCorrect"`
+	Correct       bool `json:"correct"`
+	Awarded       bool `json:"awarded"`
 }
 
 // RevealPayload is the server->client `reveal` message (§13.2).

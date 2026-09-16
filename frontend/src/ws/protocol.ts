@@ -7,7 +7,16 @@ export interface CardView {
   trackId: string;
   title: string;
   artist: string;
+  album: string;
   year: number;
+}
+
+/** What the active player must name for the song guess bonus token. */
+export interface GuessFields {
+  title: boolean;
+  artist: boolean;
+  album: boolean;
+  year: boolean;
 }
 
 export interface PlayerView {
@@ -31,7 +40,7 @@ export interface CurrentTurnView {
   stealWindowOpen: boolean;
   stealClaims: string[];
   stealsPlaced: string[];
-  /** Your own pending song guess; only present for the active player. */
+  /** The active player's current song guess, visible to everyone. */
   songGuess: SongGuess | null;
 }
 
@@ -39,7 +48,7 @@ export interface StatePayload {
   gameId: string;
   inviteCode: string;
   phase: "LOBBY" | "PREPARING" | "PLACING" | "CHALLENGING" | "REVEALING" | "GAME_OVER";
-  settings: { targetCards: number; startTokens: number; maxTokens: number; enableSongGuess: boolean };
+  settings: { targetCards: number; startTokens: number; maxTokens: number; guessFields: GuessFields };
   hostId: string;
   youId: string;
   activePlayerId: string;
@@ -51,9 +60,12 @@ export interface StatePayload {
   tracksUsed: number;
 }
 
+/** A song guess as typed; fields the game doesn't ask for are empty. */
 export interface SongGuess {
   title: string;
   artist: string;
+  album: string;
+  year: string;
 }
 
 export interface TrackPreloadPayload {
@@ -98,7 +110,14 @@ export interface RevealPayload {
   challenges: RevealChallengeView[];
   outcome: "active_correct" | "challenger_correct" | "discarded";
   tokenChanges: TokenChangeView[];
-  songGuessResult?: SongGuess & { titleCorrect: boolean; artistCorrect: boolean; correct: boolean; awarded: boolean };
+  songGuessResult?: SongGuess & {
+    titleCorrect: boolean;
+    artistCorrect: boolean;
+    albumCorrect: boolean;
+    yearCorrect: boolean;
+    correct: boolean;
+    awarded: boolean;
+  };
   yearSource: string;
 }
 

@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Check, Coins, X, Zap } from "lucide-react";
-import type { RevealPayload, PlayerView } from "../ws/protocol";
+import { Check, Coins, Disc3, X, Zap } from "lucide-react";
+import type { GuessFields, RevealPayload, PlayerView } from "../ws/protocol";
 
 function sourceLabel(t: (k: string) => string, source: string): string {
   switch (source) {
@@ -14,7 +14,15 @@ function sourceLabel(t: (k: string) => string, source: string): string {
   }
 }
 
-export default function RevealOverlay({ reveal, players }: { reveal: RevealPayload; players: PlayerView[] }) {
+export default function RevealOverlay({
+  reveal,
+  players,
+  guessFields,
+}: {
+  reveal: RevealPayload;
+  players: PlayerView[];
+  guessFields: GuessFields;
+}) {
   const { t } = useTranslation();
   const winner = players.find((p) => p.id === reveal.winnerPlayerId);
 
@@ -40,6 +48,12 @@ export default function RevealOverlay({ reveal, players }: { reveal: RevealPaylo
             <div className="brand-text text-7xl font-bold tabular-nums tracking-tighter">{reveal.card.year}</div>
             <div className="mt-2 text-xl font-semibold leading-snug tracking-tight">{reveal.card.title}</div>
             <div className="text-sm text-fg/55">{reveal.card.artist}</div>
+            {reveal.card.album && (
+              <div className="mt-1.5 flex max-w-full items-center gap-1.5 text-xs text-fg/40">
+                <Disc3 size={13} className="shrink-0" />
+                <span className="truncate">{reveal.card.album}</span>
+              </div>
+            )}
 
             <div className="mt-5">
               {reveal.outcome === "active_correct" && (
@@ -66,6 +80,7 @@ export default function RevealOverlay({ reveal, players }: { reveal: RevealPaylo
           {reveal.songGuessResult && (
             <SongGuessResult
               result={reveal.songGuessResult}
+              fields={guessFields}
               playerName={players.find((p) => p.id === reveal.activePlayerId)?.name ?? ""}
             />
           )}
@@ -80,7 +95,15 @@ export default function RevealOverlay({ reveal, players }: { reveal: RevealPaylo
   );
 }
 
-function SongGuessResult({ result, playerName }: { result: NonNullable<RevealPayload["songGuessResult"]>; playerName: string }) {
+function SongGuessResult({
+  result,
+  fields,
+  playerName,
+}: {
+  result: NonNullable<RevealPayload["songGuessResult"]>;
+  fields: GuessFields;
+  playerName: string;
+}) {
   const { t } = useTranslation();
   const outcome = result.awarded
     ? { text: t("reveal.songGuessCorrect"), className: "text-gold" }
@@ -95,8 +118,10 @@ function SongGuessResult({ result, playerName }: { result: NonNullable<RevealPay
         {t("reveal.songGuessBy", { name: playerName })}
       </div>
       <div className="flex flex-col gap-1.5">
-        <GuessPart label={t("reveal.title")} value={result.title} correct={result.titleCorrect} />
-        <GuessPart label={t("reveal.artist")} value={result.artist} correct={result.artistCorrect} />
+        {fields.title && <GuessPart label={t("reveal.title")} value={result.title} correct={result.titleCorrect} />}
+        {fields.artist && <GuessPart label={t("reveal.artist")} value={result.artist} correct={result.artistCorrect} />}
+        {fields.album && <GuessPart label={t("reveal.album")} value={result.album} correct={result.albumCorrect} />}
+        {fields.year && <GuessPart label={t("reveal.year")} value={result.year} correct={result.yearCorrect} />}
       </div>
       <div className={`mt-3 text-xs font-medium ${outcome.className}`}>{outcome.text}</div>
     </div>
@@ -113,7 +138,7 @@ function GuessPart({ label, value, correct }: { label: string; value: string; co
       >
         {correct ? <Check size={12} strokeWidth={3} /> : <X size={12} strokeWidth={3} />}
       </span>
-      <span className="w-12 shrink-0 text-xs text-fg/40">{label}</span>
+      <span className="w-16 shrink-0 text-xs text-fg/40">{label}</span>
       <span className="truncate font-medium">{value || "—"}</span>
     </div>
   );

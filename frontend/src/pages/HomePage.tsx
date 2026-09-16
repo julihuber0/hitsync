@@ -80,8 +80,8 @@ export default function HomePage() {
 
       <main className="mx-auto mt-14 max-w-5xl animate-fade-in sm:mt-20">
         <div className="mb-10 text-center sm:mb-14">
-          <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
-            <span className="brand-text">{t("home.title")}</span>
+          <h1 className="text-5xl font-bold leading-[1.2] tracking-tight sm:text-6xl sm:leading-[1.2]">
+            <span className="brand-text pb-[0.12em]">{t("home.title")}</span>
           </h1>
         </div>
 

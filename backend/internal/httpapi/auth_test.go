@@ -18,8 +18,7 @@ func testAPI() *API {
 		AdminPassword: "supersecretadmin",
 		JWTSecret:     "a-very-secret-key-that-is-32chars!!",
 		MinPlayers:    2, MaxPlayers: 12, DefaultTargetCards: 10, DefaultStartTokens: 2,
-		RuleEnableSongGuess: true,
-		AppDomain:           "hitsync.example.com",
+		AppDomain: "hitsync.example.com",
 	}
 	return &API{
 		cfg:           cfg,
