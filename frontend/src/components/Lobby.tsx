@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Play, Users } from "lucide-react";
 import { useGameStore } from "../store/gameStore";
 import { useAppStore } from "../store/appStore";
 import PlayerList from "./PlayerList";
 import QrCode from "./QrCode";
 import LanguageToggle from "./LanguageToggle";
+import { Aurora, Logo, Slider } from "./ui";
 
 function formatInviteCode(code: string): string {
   return code.length === 6 ? `${code.slice(0, 3)}-${code.slice(3)}` : code;
@@ -34,17 +35,26 @@ export default function Lobby() {
   const canStart = state.players.length >= minPlayers;
 
   return (
-    <div className="min-h-screen px-4 py-8 animate-fade-in">
-      <div className="max-w-5xl mx-auto flex items-center justify-between mb-6">
-        <h1 className="neon-heading text-xl font-semibold">{t("lobby.title")}</h1>
+    <div className="relative min-h-screen px-4 pb-12 pt-5 sm:px-6">
+      <Aurora />
+      <header className="mx-auto flex max-w-5xl items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Logo />
+          <span className="h-5 w-px bg-white/10" />
+          <h1 className="text-sm font-medium text-fg/60">{t("lobby.title")}</h1>
+        </div>
         <LanguageToggle />
-      </div>
+      </header>
 
-      <div className="max-w-5xl mx-auto grid lg:grid-cols-[1fr_1.2fr] gap-6">
-        <div className="card-surface p-6">
-          <h2 className="text-sm font-semibold text-neon/70 mb-3">
-            {t("lobby.players")} ({state.players.length})
-          </h2>
+      <div className="mx-auto mt-8 grid max-w-5xl animate-fade-in gap-5 lg:grid-cols-[1fr_1.15fr]">
+        <section className="surface self-start p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="eyebrow">{t("lobby.players")}</h2>
+            <span className="chip">
+              <Users size={12} />
+              {state.players.length}
+            </span>
+          </div>
           <PlayerList
             players={state.players}
             youId={state.youId}
@@ -53,40 +63,34 @@ export default function Lobby() {
             isHost={isHost}
             onKick={(playerId) => socket?.kickPlayer(playerId)}
           />
-        </div>
+        </section>
 
-        <div className="flex flex-col gap-6">
-          <div className="card-surface p-6">
-            <h2 className="text-sm font-semibold text-neon/70 mb-4">{t("lobby.settings")}</h2>
+        <div className="flex flex-col gap-5">
+          <section className="surface p-6">
+            <h2 className="eyebrow mb-5">{t("lobby.settings")}</h2>
             <SettingsPanel isHost={isHost} />
-          </div>
+          </section>
 
-          <div className="card-surface p-6 flex flex-col items-center gap-4">
-            <h2 className="text-sm font-semibold text-neon/70 self-start">{t("lobby.invite")}</h2>
-            <div className="neon-heading text-4xl font-mono font-semibold tracking-[0.2em] text-accent">
-              {formatInviteCode(state.inviteCode)}
+          <section className="surface flex flex-col items-center gap-5 p-6 sm:flex-row sm:items-center">
+            <QrCode value={joinUrl} size={132} />
+            <div className="flex w-full flex-1 flex-col items-center gap-3 sm:items-start">
+              <h2 className="eyebrow">{t("lobby.invite")}</h2>
+              <div className="brand-text font-mono text-4xl font-bold tracking-[0.18em]">{formatInviteCode(state.inviteCode)}</div>
+              <button onClick={() => void copyLink()} className="btn btn-secondary btn-md">
+                {copied ? <Check size={16} className="text-success" /> : <Copy size={16} />}
+                {copied ? t("common.copied") : t("lobby.copyLink")}
+              </button>
             </div>
-            <QrCode value={joinUrl} />
-            <button
-              onClick={() => void copyLink()}
-              className="flex items-center gap-2 text-sm bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan active:scale-[0.97] transition-all duration-200 rounded-lg px-4 py-2"
-            >
-              {copied ? <Check size={16} className="text-success" /> : <Copy size={16} />}
-              {copied ? t("common.copied") : t("lobby.copyLink")}
-            </button>
-          </div>
+          </section>
 
           {isHost && (
-            <div className="relative group">
-              <button
-                onClick={() => socket?.startGame()}
-                disabled={!canStart}
-                className="w-full bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-3 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none"
-              >
+            <div className="group relative">
+              <button onClick={() => socket?.startGame()} disabled={!canStart} className="btn btn-primary btn-lg h-14 w-full text-base">
+                <Play size={18} className="fill-current" />
                 {t("lobby.start")}
               </button>
               {!canStart && (
-                <div className="absolute -top-9 left-1/2 -translate-x-1/2 text-xs bg-black/80 px-3 py-1.5 rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-elevated px-3 py-1.5 text-xs opacity-0 shadow-card transition-opacity group-hover:opacity-100">
                   {t("lobby.startDisabled", { count: minPlayers })}
                 </div>
               )}
@@ -106,63 +110,56 @@ function SettingsPanel({ isHost }: { isHost: boolean }) {
   const { targetCards, startTokens, maxTokens, enableSongGuess } = state.settings;
 
   return (
-    <div className="flex flex-col gap-4">
-      <SettingRow label={t("lobby.targetCards", { count: targetCards })}>
-        <input
-          type="range"
+    <div className="flex flex-col gap-5">
+      <SettingRow label={t("lobby.targetCards", { count: targetCards })} value={targetCards}>
+        <Slider
           min={5}
           max={20}
           value={targetCards}
           disabled={!isHost}
           onChange={(e) => socket?.updateSettings({ targetCards: Number(e.target.value) })}
-          className="w-full accent-accent"
         />
       </SettingRow>
-      <SettingRow label={t("lobby.maxTokens")}>
-        <input
-          type="range"
+      <SettingRow label={t("lobby.maxTokens")} value={maxTokens}>
+        <Slider
           min={1}
           max={maxTokensLimit}
           value={maxTokens}
           disabled={!isHost}
           onChange={(e) => socket?.updateSettings({ maxTokens: Number(e.target.value) })}
-          className="w-full accent-accent"
         />
-        <span className="text-sm tabular-nums w-6 text-right">{maxTokens}</span>
       </SettingRow>
-      <SettingRow label={t("lobby.startTokens")}>
-        <input
-          type="range"
+      <SettingRow label={t("lobby.startTokens")} value={startTokens}>
+        <Slider
           min={0}
           max={maxTokens}
           value={startTokens}
           disabled={!isHost}
           onChange={(e) => socket?.updateSettings({ startTokens: Number(e.target.value) })}
-          className="w-full accent-accent"
         />
-        <span className="text-sm tabular-nums w-6 text-right">{startTokens}</span>
       </SettingRow>
-      <label className="flex items-center justify-between text-sm">
+      <label className="flex items-center justify-between gap-4 border-t border-white/[0.06] pt-4 text-sm font-medium text-fg/80">
         {t("lobby.songGuess")}
         <input
           type="checkbox"
           checked={enableSongGuess}
           disabled={!isHost}
           onChange={(e) => socket?.updateSettings({ enableSongGuess: e.target.checked })}
-          className="accent-accent w-4 h-4"
+          className="switch"
         />
       </label>
     </div>
   );
 }
 
-function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
+function SettingRow({ label, value, children }: { label: string; value: number; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between text-sm text-neon/70">
+    <div className="flex flex-col gap-2.5">
+      <div className="flex items-center justify-between text-sm font-medium text-fg/80">
         <span>{label}</span>
+        <span className="min-w-[2rem] rounded-md bg-white/[0.06] px-2 py-0.5 text-center text-xs font-semibold tabular-nums text-fg">{value}</span>
       </div>
-      <div className="flex items-center gap-2">{children}</div>
+      {children}
     </div>
   );
 }

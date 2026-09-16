@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { saveIdentity, loadRecentGames, loadPlayerToken } from "../api/identity";
 import { useAppStore } from "../store/appStore";
+import { ArrowRight, LogOut, Plus, Users } from "lucide-react";
 import LanguageToggle from "../components/LanguageToggle";
+import { Aurora, Logo } from "../components/ui";
 import { audioPlayer } from "../audio/instance";
 
 export default function HomePage() {
@@ -63,79 +65,98 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen px-4 py-10 animate-fade-in">
-      <div className="max-w-4xl mx-auto flex items-center justify-between mb-10">
-        <h1 className="neon-heading text-2xl font-semibold text-accent">{t("home.title")}</h1>
-        <div className="flex items-center gap-3">
+    <div className="relative min-h-screen px-4 pb-16 pt-5 sm:px-6">
+      <Aurora />
+      <header className="mx-auto flex max-w-5xl items-center justify-between">
+        <Logo />
+        <div className="flex items-center gap-2">
           <LanguageToggle />
-          <button onClick={() => void logout()} className="text-sm text-neon/50 hover:text-neon transition-colors">
-            {t("home.logout")}
+          <button onClick={() => void logout()} className="btn btn-ghost btn-md">
+            <LogOut size={15} />
+            <span className="hidden sm:inline">{t("home.logout")}</span>
           </button>
         </div>
-      </div>
+      </header>
 
-      {error && <div className="max-w-4xl mx-auto mb-6 text-danger text-sm text-center">{error}</div>}
-
-      <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-6">
-        <form onSubmit={createGame} className="card-surface p-6 flex flex-col gap-4">
-          <h2 className="text-lg font-semibold">{t("home.hostCard.title")}</h2>
-          <input
-            value={hostName}
-            onChange={(e) => setHostName(e.target.value)}
-            placeholder={t("home.hostCard.namePlaceholder")}
-            className="neon-focus bg-black/30 border border-border rounded-lg py-2.5 px-3 outline-none focus:border-accent transition-colors"
-            maxLength={20}
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-2.5 rounded-lg disabled:opacity-50 disabled:hover:shadow-none"
-          >
-            {t("home.hostCard.submit")}
-          </button>
-        </form>
-
-        <form onSubmit={joinGame} className="card-surface p-6 flex flex-col gap-4">
-          <h2 className="text-lg font-semibold">{t("home.joinCard.title")}</h2>
-          <input
-            value={joinName}
-            onChange={(e) => setJoinName(e.target.value)}
-            placeholder={t("home.joinCard.namePlaceholder")}
-            className="neon-focus bg-black/30 border border-border rounded-lg py-2.5 px-3 outline-none focus:border-accent transition-colors"
-            maxLength={20}
-          />
-          <input
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-            placeholder={t("home.joinCard.codePlaceholder")}
-            className="neon-focus bg-black/30 border border-border rounded-lg py-2.5 px-3 outline-none focus:border-accent font-mono tracking-widest transition-colors"
-            maxLength={7}
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan active:scale-[0.97] transition-all duration-200 text-white font-semibold py-2.5 rounded-lg disabled:opacity-50 disabled:hover:shadow-none"
-          >
-            {t("home.joinCard.submit")}
-          </button>
-        </form>
-      </div>
-
-      {recentGames.length > 0 && (
-        <div className="max-w-4xl mx-auto mt-8 card-surface p-6 animate-fade-in">
-          <h3 className="text-sm font-semibold text-neon/70 mb-3">{t("home.recentGames.title")}</h3>
-          <ul className="flex flex-col gap-2">
-            {recentGames.map((g) => (
-              <li key={g.gameId} className="flex items-center justify-between text-sm">
-                <span className="font-mono tracking-widest text-neon/60">{g.inviteCode}</span>
-                <button onClick={() => navigate(`/game/${g.gameId}`)} className="text-accent hover:underline hover:drop-shadow-neon transition-all">
-                  {t("home.recentGames.rejoin")}
-                </button>
-              </li>
-            ))}
-          </ul>
+      <main className="mx-auto mt-14 max-w-5xl animate-fade-in sm:mt-20">
+        <div className="mb-10 text-center sm:mb-14">
+          <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
+            <span className="brand-text">{t("home.title")}</span>
+          </h1>
         </div>
-      )}
+
+        {error && (
+          <div role="alert" className="mx-auto mb-6 max-w-3xl rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-center text-sm text-danger">
+            {error}
+          </div>
+        )}
+
+        <div className="mx-auto grid max-w-3xl gap-5 md:grid-cols-2">
+          <form onSubmit={createGame} className="surface flex flex-col gap-5 p-6 sm:p-7">
+            <div className="flex items-center gap-3">
+              <span className="brand-mark h-10 w-10">
+                <Plus size={20} />
+              </span>
+              <h2 className="text-lg font-semibold tracking-tight">{t("home.hostCard.title")}</h2>
+            </div>
+            <input
+              value={hostName}
+              onChange={(e) => setHostName(e.target.value)}
+              placeholder={t("home.hostCard.namePlaceholder")}
+              className="input"
+              maxLength={20}
+            />
+            <button type="submit" disabled={busy} className="btn btn-primary btn-lg mt-auto w-full">
+              {t("home.hostCard.submit")}
+              <ArrowRight size={17} />
+            </button>
+          </form>
+
+          <form onSubmit={joinGame} className="surface flex flex-col gap-5 p-6 sm:p-7">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-accent2">
+                <Users size={19} />
+              </span>
+              <h2 className="text-lg font-semibold tracking-tight">{t("home.joinCard.title")}</h2>
+            </div>
+            <input
+              value={joinName}
+              onChange={(e) => setJoinName(e.target.value)}
+              placeholder={t("home.joinCard.namePlaceholder")}
+              className="input"
+              maxLength={20}
+            />
+            <input
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+              placeholder={t("home.joinCard.codePlaceholder")}
+              className="input font-mono tracking-[0.25em] placeholder:font-sans placeholder:tracking-normal"
+              maxLength={7}
+            />
+            <button type="submit" disabled={busy} className="btn btn-secondary btn-lg w-full">
+              {t("home.joinCard.submit")}
+              <ArrowRight size={17} />
+            </button>
+          </form>
+        </div>
+
+        {recentGames.length > 0 && (
+          <section className="surface mx-auto mt-5 max-w-3xl animate-fade-in p-6 sm:p-7">
+            <h3 className="eyebrow mb-3">{t("home.recentGames.title")}</h3>
+            <ul className="flex flex-col divide-y divide-white/[0.06]">
+              {recentGames.map((g) => (
+                <li key={g.gameId} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                  <span className="font-mono text-sm tracking-[0.2em] text-fg/70">{g.inviteCode}</span>
+                  <button onClick={() => navigate(`/game/${g.gameId}`)} className="btn btn-secondary btn-sm">
+                    {t("home.recentGames.rejoin")}
+                    <ArrowRight size={14} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </main>
     </div>
   );
 }

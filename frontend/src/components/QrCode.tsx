@@ -6,7 +6,7 @@ export default function QrCode({ value, size = 160 }: { value: string; size?: nu
 
   useEffect(() => {
     let cancelled = false;
-    void QRCode.toDataURL(value, { width: size, margin: 1, color: { dark: "#0a0118", light: "#ffffff" } }).then((url) => {
+    void QRCode.toDataURL(value, { width: size, margin: 1, color: { dark: "#07070c", light: "#ffffff" } }).then((url) => {
       if (!cancelled) setDataUrl(url);
     });
     return () => {
@@ -14,14 +14,15 @@ export default function QrCode({ value, size = 160 }: { value: string; size?: nu
     };
   }, [value, size]);
 
-  if (!dataUrl) return <div style={{ width: size, height: size }} className="bg-white/5 rounded-lg animate-pulse" />;
+  if (!dataUrl) return <div style={{ width: size + 16, height: size + 16 }} className="shrink-0 animate-pulse rounded-2xl bg-white/5" />;
   return (
     <img
       src={dataUrl}
       alt="Invite QR code"
       width={size}
       height={size}
-      className="rounded-lg ring-2 ring-accent/30 shadow-neon-sm bg-white p-1"
+      className="shrink-0 rounded-2xl bg-white p-2 shadow-glow-sm"
+      style={{ width: size + 16, height: size + 16 }}
     />
   );
 }

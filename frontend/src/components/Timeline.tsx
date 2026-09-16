@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { Coins, Plus } from "lucide-react";
 import type { CardView } from "../ws/protocol";
 
 interface Props {
@@ -57,6 +58,39 @@ export default function Timeline({
     return true;
   };
 
+  const previewDots = (slotPreviews: Props["previews"] & object) =>
+    slotPreviews.length > 0 && (
+      <span className="absolute -top-2 left-1/2 z-10 flex -translate-x-1/2 -space-x-1" aria-label={slotPreviews.map((p) => p.name).join(", ")}>
+        {slotPreviews.map((preview) => (
+          <span
+            key={preview.playerId}
+            className="h-3 w-3 rounded-full ring-2 ring-bg"
+            style={{ backgroundColor: preview.colour, boxShadow: `0 0 8px ${preview.colour}` }}
+            title={preview.name}
+          />
+        ))}
+      </span>
+    );
+
+  const markers = (isPlacement: boolean, isPreview: boolean) => (
+    <>
+      {isPlacement && (
+        <span
+          className="absolute inset-y-2 left-1/2 w-1 -translate-x-1/2 rounded-full bg-gradient-to-b from-accent to-accent-end shadow-glow-sm"
+          aria-label="submitted placement"
+        />
+      )}
+      {isPreview && (
+        <span
+          className="absolute inset-y-2 left-1/2 w-1 -translate-x-1/2 animate-glow-pulse rounded-full bg-accent/70"
+          aria-label="selecting placement"
+        />
+      )}
+    </>
+  );
+
+  const cardHeight = compact ? "h-[88px]" : size === "large" ? "h-36 sm:h-40" : "h-28";
+
   const renderSlot = (slot: number) => {
     const isSelected = selectedSlot === slot;
     const isTaken = takenSlots.includes(slot);
@@ -68,28 +102,9 @@ export default function Timeline({
 
     if (mode === "view") {
       return (
-        <div key={`slot-${slot}`} className="relative w-3 h-20 sm:h-24 shrink-0">
-          {slotPreviews.length > 0 && (
-            <span className="absolute -top-1 left-1/2 flex -translate-x-1/2 gap-0.5" aria-label={slotPreviews.map((p) => p.name).join(", ")}>
-              {slotPreviews.map((preview) => (
-                <span
-                  key={preview.playerId}
-                  className="w-2.5 h-2.5 rounded-full ring-2 ring-bg"
-                  style={{ backgroundColor: preview.colour, boxShadow: `0 0 6px ${preview.colour}` }}
-                  title={preview.name}
-                />
-              ))}
-            </span>
-          )}
-          {isPlacement && (
-            <span className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full bg-accent shadow-neon-sm" aria-label="submitted placement" />
-          )}
-          {isPreview && (
-            <span
-              className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full border-2 border-accent bg-accent/30 animate-glow-pulse"
-              aria-label="selecting placement"
-            />
-          )}
+        <div key={`slot-${slot}`} className={`relative w-3 shrink-0 ${cardHeight}`}>
+          {previewDots(slotPreviews)}
+          {markers(isPlacement, isPreview)}
         </div>
       );
     }
@@ -102,68 +117,64 @@ export default function Timeline({
         disabled={!clickable}
         onClick={() => clickable && onSelectSlot?.(slot)}
         aria-label={`slot-${slot}`}
-        className={`relative shrink-0 w-8 h-20 sm:h-24 rounded-md transition-all duration-150 ease-game ${
+        className={`group/slot relative flex w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ease-game ${cardHeight} ${
           isSelected
-            ? "bg-accent/30 border-2 border-accent scale-105 shadow-neon"
+            ? "w-12 bg-gradient-to-b from-accent/40 to-accent-end/30 shadow-glow ring-2 ring-accent"
             : isTaken
-              ? "bg-white/5 border border-white/10 cursor-not-allowed"
+              ? "cursor-not-allowed border border-white/10 bg-white/[0.04]"
               : isDisabled
-                ? "bg-white/[0.02] border border-transparent cursor-not-allowed"
+                ? "cursor-not-allowed border border-transparent bg-white/[0.015]"
                 : clickable
-                  ? "bg-white/5 border border-dashed border-neon/25 hover:border-accent/70 hover:bg-accent/10 hover:shadow-neon-sm"
-                  : "bg-transparent border-transparent"
+                  ? "border border-dashed border-white/15 bg-white/[0.02] hover:w-11 hover:border-accent/60 hover:bg-accent/10"
+                  : "border-transparent bg-transparent"
         }`}
       >
-        {mode === "challenge" && isTaken && <span className="absolute inset-0 flex items-center justify-center text-xs">🪙</span>}
-        {slotPreviews.length > 0 && (
-          <span className="absolute -top-1 left-1/2 flex -translate-x-1/2 gap-0.5" aria-label={slotPreviews.map((p) => p.name).join(", ")}>
-            {slotPreviews.map((preview) => (
-              <span
-                key={preview.playerId}
-                className="w-2.5 h-2.5 rounded-full ring-2 ring-bg"
-                style={{ backgroundColor: preview.colour, boxShadow: `0 0 6px ${preview.colour}` }}
-                title={preview.name}
-              />
-            ))}
-          </span>
+        {clickable && !isSelected && !isTaken && (
+          <Plus size={14} className="text-fg/25 transition-colors group-hover/slot:text-accent" aria-hidden />
         )}
-        {isPlacement && (
-          <span className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full bg-accent shadow-neon-sm" aria-label="submitted placement" />
-        )}
-        {isPreview && (
-          <span
-            className="absolute bottom-1 left-1/2 w-2 h-2 -translate-x-1/2 rounded-full border-2 border-accent bg-accent/30 animate-glow-pulse"
-            aria-label="selecting placement"
-          />
-        )}
+        {isSelected && <Plus size={16} className="text-white" aria-hidden />}
+        {mode === "challenge" && isTaken && <Coins size={14} className="text-gold" aria-hidden />}
+        {previewDots(slotPreviews)}
+        {markers(isPlacement, isPreview)}
       </button>
     );
   };
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full overflow-x-auto pb-2"
-      style={{
-        maskImage: "linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent)",
-      }}
-    >
-      <div className="flex items-center gap-1 px-4 min-w-min mx-auto w-fit">
+    <div ref={containerRef} className="fade-edges-x w-full overflow-x-auto pb-3 pt-3">
+      <div className="mx-auto flex w-fit min-w-min items-center gap-1.5 px-5">
         {renderSlot(0)}
         {timeline.map((card, i) => (
-          <div key={card.trackId + i} className="flex items-center gap-1">
+          <div key={card.trackId + i} className="flex items-center gap-1.5">
             <div
-              className={`shrink-0 card-surface flex flex-col items-center justify-center transition-all duration-200 ease-game ${
-                compact ? "w-14 h-20" : size === "large" ? "w-24 h-32 sm:w-28 sm:h-36" : "w-20 h-28"
-              } ${highlightSlot === i && highlightCorrect === true ? "!border-success border-2 shadow-[0_0_16px_rgba(57,255,136,0.4)]" : ""} ${
-                highlightSlot === i && highlightCorrect === false ? "!border-danger border-2 shadow-[0_0_16px_rgba(255,56,100,0.4)]" : ""
+              className={`relative flex shrink-0 flex-col items-center justify-center overflow-hidden rounded-2xl border bg-gradient-to-b from-elevated to-surface px-2 text-center shadow-card transition-all duration-200 ease-game ${
+                compact ? "w-[68px]" : size === "large" ? "w-28 sm:w-32" : "w-24"
+              } ${cardHeight} ${
+                highlightSlot === i && highlightCorrect === true
+                  ? "border-success/70 shadow-[0_0_24px_-4px_rgba(52,211,153,0.5)]"
+                  : highlightSlot === i && highlightCorrect === false
+                    ? "border-danger/70 shadow-[0_0_24px_-4px_rgba(251,113,133,0.5)]"
+                    : "border-white/[0.08]"
               }`}
             >
-              <span className={`neon-heading font-semibold tabular-nums text-accent ${compact ? "text-base" : "text-xl"}`}>{card.year}</span>
-              <span className={`mt-1 px-1 text-center font-medium leading-tight line-clamp-2 ${compact ? "text-[8px]" : "text-[10px]"}`}>
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+              <span
+                className={`brand-text font-bold tabular-nums tracking-tight ${
+                  compact ? "text-lg" : size === "large" ? "text-3xl" : "text-2xl"
+                }`}
+              >
+                {card.year}
+              </span>
+              <span
+                className={`mt-1.5 line-clamp-2 flex min-h-[2.5em] items-center font-medium leading-tight text-fg/90 ${
+                  compact ? "text-[9px]" : size === "large" ? "text-xs" : "text-[11px]"
+                }`}
+              >
                 {card.title}
               </span>
-              {!compact && <span className="text-[10px] text-neon/40 mt-0.5 px-1 text-center line-clamp-1">{card.artist}</span>}
+              {!compact && (
+                <span className={`mt-0.5 line-clamp-1 text-fg/45 ${size === "large" ? "text-[11px]" : "text-[10px]"}`}>{card.artist}</span>
+              )}
             </div>
             {renderSlot(i + 1)}
           </div>

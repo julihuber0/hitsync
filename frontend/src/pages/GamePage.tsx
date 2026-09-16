@@ -54,7 +54,8 @@ export default function GamePage() {
 
   if (!state) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-neon/50 animate-glow-pulse">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 text-sm text-fg/50">
+        <span className="spinner h-6 w-6" />
         {connected ? "…" : "Connecting…"}
       </div>
     );

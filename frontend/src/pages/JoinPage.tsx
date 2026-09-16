@@ -4,6 +4,8 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { api, ApiError, type GamePreview } from "../api/client";
 import { saveIdentity } from "../api/identity";
 import { audioPlayer } from "../audio/instance";
+import { ArrowRight, Users } from "lucide-react";
+import { Aurora, Logo } from "../components/ui";
 
 export default function JoinPage() {
   const { t } = useTranslation();
@@ -52,25 +54,31 @@ export default function JoinPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 animate-fade-in">
-      <form onSubmit={submit} className="card-surface shadow-neon w-full max-w-sm p-8 flex flex-col gap-4 items-center">
-        <h1 className="text-lg font-semibold">{t("join.hostedBy", { name: preview.hostName })}</h1>
-        <p className="text-sm text-neon/60">{t("join.playerCount", { count: preview.playerCount, max: preview.maxPlayers })}</p>
-        <input
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t("join.namePlaceholder")}
-          className="neon-focus w-full bg-black/30 border border-border rounded-lg py-2.5 px-3 outline-none focus:border-accent transition-colors"
-          maxLength={20}
-        />
-        {error && <p className="text-danger text-sm">{error}</p>}
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-2.5 rounded-lg disabled:opacity-50 disabled:hover:shadow-none"
-        >
+    <div className="relative flex min-h-screen items-center justify-center px-4">
+      <Aurora />
+      <form onSubmit={submit} className="surface flex w-full max-w-sm animate-fade-in flex-col items-center gap-6 p-8 sm:p-10">
+        <Logo size="lg" />
+        <div className="flex flex-col items-center gap-2 text-center">
+          <h1 className="text-xl font-semibold tracking-tight">{t("join.hostedBy", { name: preview.hostName })}</h1>
+          <span className="chip px-2.5 py-1 text-xs">
+            <Users size={13} />
+            {t("join.playerCount", { count: preview.playerCount, max: preview.maxPlayers })}
+          </span>
+        </div>
+        <div className="flex w-full flex-col gap-2">
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t("join.namePlaceholder")}
+            className="input"
+            maxLength={20}
+          />
+          {error && <p className="text-center text-sm text-danger">{error}</p>}
+        </div>
+        <button type="submit" disabled={busy} className="btn btn-primary btn-lg w-full">
           {t("join.submit")}
+          <ArrowRight size={17} />
         </button>
       </form>
     </div>
@@ -80,10 +88,12 @@ export default function JoinPage() {
 function ProblemScreen({ message }: { message: string }) {
   const { t } = useTranslation();
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 animate-fade-in">
-      <div className="card-surface w-full max-w-sm p-8 flex flex-col gap-4 items-center text-center">
-        <p>{message}</p>
-        <Link to="/" className="text-accent hover:underline hover:drop-shadow-neon transition-all">
+    <div className="relative flex min-h-screen items-center justify-center px-4">
+      <Aurora />
+      <div className="surface flex w-full max-w-sm animate-fade-in flex-col items-center gap-6 p-8 text-center sm:p-10">
+        <Logo size="lg" />
+        <p className="text-fg/80">{message}</p>
+        <Link to="/" className="btn btn-secondary btn-md">
           {t("join.goHome")}
         </Link>
       </div>

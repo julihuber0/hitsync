@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Coins } from "lucide-react";
 import type { SongGuess } from "../ws/protocol";
 
 // Typing sends the guess after a short pause; leaving a field sends it at once.
@@ -43,37 +44,41 @@ export default function SongGuessPanel({ initial, onChange }: Props) {
     if (timer.current) send();
   };
 
-  const inputClass =
-    "neon-focus w-full bg-black/30 border border-border rounded-lg py-2 px-3 text-sm outline-none focus:border-accent transition-colors";
-
   return (
-    <div className="card-surface w-full max-w-md p-4 flex flex-col gap-3">
-      <div>
-        <h3 className="text-sm font-semibold text-neon/70">{t("board.guessTitle")}</h3>
-        <p className="text-xs text-neon/45">{t("board.guessHint")}</p>
+    <div className="w-full max-w-xl rounded-2xl border border-white/[0.07] bg-black/20 p-4 sm:p-5">
+      <div className="mb-4 flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gold/25 bg-gold/10 text-gold">
+          <Coins size={17} />
+        </span>
+        <div>
+          <h3 className="text-sm font-semibold">{t("board.guessTitle")}</h3>
+          <p className="mt-0.5 text-xs leading-relaxed text-fg/50">{t("board.guessHint")}</p>
+        </div>
       </div>
-      <label className="flex flex-col gap-1 text-xs text-neon/50">
-        {t("board.guessTitleLabel")}
-        <input
-          value={title}
-          maxLength={200}
-          autoComplete="off"
-          onChange={(e) => update({ title: e.target.value, artist })}
-          onBlur={flush}
-          className={inputClass}
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-xs text-neon/50">
-        {t("board.guessArtistLabel")}
-        <input
-          value={artist}
-          maxLength={200}
-          autoComplete="off"
-          onChange={(e) => update({ title, artist: e.target.value })}
-          onBlur={flush}
-          className={inputClass}
-        />
-      </label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-fg/55">{t("board.guessTitleLabel")}</span>
+          <input
+            value={title}
+            maxLength={200}
+            autoComplete="off"
+            onChange={(e) => update({ title: e.target.value, artist })}
+            onBlur={flush}
+            className="input h-11 text-sm"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-fg/55">{t("board.guessArtistLabel")}</span>
+          <input
+            value={artist}
+            maxLength={200}
+            autoComplete="off"
+            onChange={(e) => update({ title, artist: e.target.value })}
+            onBlur={flush}
+            className="input h-11 text-sm"
+          />
+        </label>
+      </div>
     </div>
   );
 }

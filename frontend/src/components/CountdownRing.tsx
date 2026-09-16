@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 
 interface Props {
   /** Absolute deadline in server time, ms. Null renders an idle ring. */
@@ -16,7 +16,8 @@ interface Props {
 export default function CountdownRing({ deadlineMs, totalMs, serverNow, size = 56 }: Props) {
   const ref = useRef<SVGCircleElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
-  const radius = (size - 8) / 2;
+  const gradientId = useId();
+  const radius = (size - 6) / 2;
   const circumference = 2 * Math.PI * radius;
 
   useEffect(() => {
@@ -41,16 +42,22 @@ export default function CountdownRing({ deadlineMs, totalMs, serverNow, size = 5
   }, [deadlineMs, totalMs, serverNow, circumference]);
 
   return (
-    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90 drop-shadow-neon">
-        <circle cx={size / 2} cy={size / 2} r={radius} stroke="rgba(255,190,247,0.14)" strokeWidth={4} fill="none" />
+    <div className="relative inline-flex shrink-0 items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#e043f5" />
+            <stop offset="100%" stopColor="#7c5cff" />
+          </linearGradient>
+        </defs>
+        <circle cx={size / 2} cy={size / 2} r={radius} stroke="rgba(255,255,255,0.08)" strokeWidth={3} fill="none" />
         <circle
           ref={ref}
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="#ff2bd6"
-          strokeWidth={4}
+          stroke={deadlineMs === null ? "rgba(255,255,255,0.12)" : `url(#${gradientId})`}
+          strokeWidth={3}
           fill="none"
           strokeDasharray={circumference}
           strokeDashoffset={0}
@@ -58,7 +65,7 @@ export default function CountdownRing({ deadlineMs, totalMs, serverNow, size = 5
           style={{ transition: deadlineMs === null ? "none" : "stroke-dashoffset 0.1s linear" }}
         />
       </svg>
-      <span ref={labelRef} className="absolute text-xs font-semibold tabular-nums text-neon" />
+      <span ref={labelRef} className="absolute text-xs font-semibold tabular-nums text-fg" />
     </div>
   );
 }

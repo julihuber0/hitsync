@@ -1,7 +1,8 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { Crown, Circle, Plus, Minus } from "lucide-react";
+import { Crown, Circle, Coins, Layers, Plus, Minus } from "lucide-react";
 import type { PlayerView } from "../ws/protocol";
+import { Avatar } from "./ui";
 
 interface Props {
   players: PlayerView[];
@@ -52,53 +53,61 @@ const PlayerRow = memo(function PlayerRow({ player, isYou, isHost, isActive, var
   const { t } = useTranslation();
   return (
     <li
-      className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all duration-200 ${
-        isActive ? "bg-white/10 shadow-neon-sm ring-1 ring-accent/30" : "bg-white/[0.03]"
+      className={`group relative flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-all duration-200 ${
+        isActive ? "border-accent/40 bg-gradient-to-r from-accent/[0.14] to-accent-end/[0.06] shadow-glow-sm" : "border-transparent bg-white/[0.03] hover:bg-white/[0.05]"
       }`}
     >
-      <span
-        className="w-3 h-3 rounded-full shrink-0"
-        style={{
-          backgroundColor: player.colour,
-          opacity: player.connected ? 1 : 0.35,
-          boxShadow: player.connected ? `0 0 6px ${player.colour}` : "none",
-        }}
-      />
-      <span className={`flex-1 text-sm truncate ${player.connected ? "" : "text-neon/40"}`}>
-        {player.name}
-        {isYou && <span className="text-neon/40"> ({t("lobby.you")})</span>}
+      <span className="relative">
+        <Avatar name={player.name} colour={player.colour} size={34} dimmed={!player.connected} />
+        {!player.connected && (
+          <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-bg">
+            <Circle size={8} className="fill-current text-danger" />
+          </span>
+        )}
       </span>
-      {isHost && <Crown size={14} className="text-accent drop-shadow-neon shrink-0" />}
-      {!player.connected && <Circle size={8} className="text-danger fill-current shrink-0" />}
 
-      {variant === "board" && (
-        <span className="text-xs text-neon/50 tabular-nums shrink-0">
-          {t("board.cardsCount", { count: player.timeline.length })} · {t("board.tokensCount", { count: player.tokens })}
-        </span>
-      )}
+      <div className="min-w-0 flex-1">
+        <div className={`flex items-center gap-1.5 text-sm font-medium ${player.connected ? "" : "text-fg/40"}`}>
+          <span className="truncate">{player.name}</span>
+          {isHost && <Crown size={13} className="shrink-0 text-gold" />}
+          {isYou && <span className="shrink-0 text-xs font-normal text-fg/40">({t("lobby.you")})</span>}
+        </div>
+        {variant === "board" && (
+          <div className="mt-1 flex items-center gap-1.5">
+            <span className="chip" title={t("board.cardsCount", { count: player.timeline.length })}>
+              <Layers size={11} className="text-accent" />
+              {player.timeline.length}
+            </span>
+            <span className="chip" title={t("board.tokensCount", { count: player.tokens })}>
+              <Coins size={11} className="text-gold" />
+              {player.tokens}
+            </span>
+          </div>
+        )}
+      </div>
 
       {onAdjustTokens && (
-        <span className="flex items-center gap-1 shrink-0">
+        <span className="flex shrink-0 items-center gap-1">
           <button
             onClick={() => onAdjustTokens(-1)}
             aria-label={t("board.removeToken")}
-            className="w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan active:scale-90 transition-all duration-150 disabled:opacity-30"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-fg/70 transition-all duration-150 hover:border-white/20 hover:bg-white/[0.1] hover:text-fg active:scale-90 disabled:opacity-30"
             disabled={player.tokens <= 0}
           >
-            <Minus size={12} />
+            <Minus size={13} />
           </button>
           <button
             onClick={() => onAdjustTokens(1)}
             aria-label={t("board.addToken")}
-            className="w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan active:scale-90 transition-all duration-150"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-fg/70 transition-all duration-150 hover:border-white/20 hover:bg-white/[0.1] hover:text-fg active:scale-90"
           >
-            <Plus size={12} />
+            <Plus size={13} />
           </button>
         </span>
       )}
 
       {onKick && (
-        <button onClick={onKick} className="text-xs text-danger/70 hover:text-danger shrink-0">
+        <button onClick={onKick} className="btn btn-danger btn-sm shrink-0">
           {t("lobby.kick")}
         </button>
       )}

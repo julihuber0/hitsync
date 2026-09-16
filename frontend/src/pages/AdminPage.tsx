@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Library, RefreshCw, ShieldCheck } from "lucide-react";
 import { api, ApiError } from "../api/client";
+import { Aurora, Logo } from "../components/ui";
 
 type Tab = "overview" | "games";
 
@@ -33,22 +35,28 @@ export default function AdminPage() {
 
   if (!authenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 animate-fade-in">
-        <form onSubmit={login} className="card-surface w-full max-w-sm p-8 flex flex-col gap-4">
-          <h1 className="neon-heading text-lg font-semibold">{t("admin.login.title")}</h1>
-          <input
-            type="password"
-            autoFocus
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder={t("admin.login.passwordPlaceholder")}
-            className="neon-focus bg-black/30 border border-border rounded-lg py-2.5 px-3 outline-none focus:border-accent transition-colors"
-          />
-          {error && <p className="text-danger text-sm">{error}</p>}
-          <button
-            type="submit"
-            className="bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-2.5 rounded-lg"
-          >
+      <div className="relative flex min-h-screen items-center justify-center px-4">
+        <Aurora />
+        <form onSubmit={login} className="surface flex w-full max-w-sm animate-fade-in flex-col gap-6 p-8 sm:p-10">
+          <div className="flex flex-col items-center gap-4">
+            <Logo size="lg" />
+            <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+              <ShieldCheck size={18} className="text-accent" />
+              {t("admin.login.title")}
+            </h1>
+          </div>
+          <div className="flex flex-col gap-2">
+            <input
+              type="password"
+              autoFocus
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t("admin.login.passwordPlaceholder")}
+              className="input"
+            />
+            {error && <p className="text-sm text-danger">{error}</p>}
+          </div>
+          <button type="submit" className="btn btn-primary btn-lg w-full">
             {t("admin.login.submit")}
           </button>
         </form>
@@ -57,23 +65,36 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen p-6 text-sm animate-fade-in">
-      <nav className="flex gap-2 mb-6">
-        {(["overview", "games"] as Tab[]).map((tabName) => (
-          <button
-            key={tabName}
-            onClick={() => setTab(tabName)}
-            className={`px-4 py-2 rounded-md transition-all duration-150 ${
-              tab === tabName ? "bg-accent text-white shadow-neon-sm" : "bg-white/5 hover:bg-white/10"
-            }`}
-          >
-            {t(`admin.nav.${tabName}`)}
-          </button>
-        ))}
-      </nav>
+    <div className="relative min-h-screen px-4 pb-12 pt-5 text-sm sm:px-6">
+      <Aurora />
+      <header className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Logo />
+          <span className="h-5 w-px bg-white/10" />
+          <span className="flex items-center gap-1.5 text-sm font-medium text-fg/60">
+            <ShieldCheck size={15} />
+            Admin
+          </span>
+        </div>
+        <nav className="flex gap-1 rounded-xl border border-white/[0.07] bg-white/[0.03] p-1">
+          {(["overview", "games"] as Tab[]).map((tabName) => (
+            <button
+              key={tabName}
+              onClick={() => setTab(tabName)}
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-all duration-150 ${
+                tab === tabName ? "bg-white/[0.1] text-fg shadow-card" : "text-fg/55 hover:text-fg"
+              }`}
+            >
+              {t(`admin.nav.${tabName}`)}
+            </button>
+          ))}
+        </nav>
+      </header>
 
-      {tab === "overview" && <OverviewTab />}
-      {tab === "games" && <GamesTab />}
+      <main className="mx-auto mt-8 max-w-4xl animate-fade-in">
+        {tab === "overview" && <OverviewTab />}
+        {tab === "games" && <GamesTab />}
+      </main>
     </div>
   );
 }
@@ -133,31 +154,52 @@ function OverviewTab() {
     [t("admin.overview.activeGames"), stats.activeGames],
   ];
 
+  const [fileRow, ...statRows] = rows;
+
   return (
-    <div className="max-w-xl">
-      <table className="w-full mb-4">
-        <tbody>
-          {rows.map(([label, value]) => (
-            <tr key={label} className="border-b border-border">
-              <td className="py-2 text-neon/60">{label}</td>
-              <td className="py-2 text-right font-mono break-all">{String(value)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {stats.lastScanError && !scanError && (
-        <p className="mb-4 text-danger">{t("admin.overview.lastScanFailed", { error: stats.lastScanError })}</p>
-      )}
-      <p className="mb-4 text-neon/50">{t("admin.overview.scanHint")}</p>
-      <button
-        onClick={() => void scan()}
-        disabled={scanning || stats.scanning}
-        className="bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan transition-all duration-150 rounded-md px-4 py-2 disabled:opacity-40"
-      >
-        {scanning || stats.scanning ? t("admin.overview.scanning") : t("admin.overview.scan")}
-      </button>
-      {result && <p className="mt-3 text-success">{t("admin.overview.scanResult", { ...result })}</p>}
-      {scanError && <p className="mt-3 text-danger">{scanError}</p>}
+    <div className="flex flex-col gap-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {statRows.map(([label, value]) => (
+          <div key={label} className="surface rounded-2xl p-4">
+            <div className="text-xs text-fg/50">{label}</div>
+            <div
+              className={`mt-1.5 break-words font-semibold tabular-nums tracking-tight ${typeof value === "number" ? "text-2xl" : "text-sm leading-6"}`}
+            >
+              {String(value)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <section className="surface flex flex-col gap-4 p-6">
+        <div className="flex items-start gap-3">
+          <span className="brand-mark h-10 w-10 shrink-0">
+            <Library size={19} />
+          </span>
+          <div className="min-w-0">
+            <div className="text-xs text-fg/50">{fileRow[0]}</div>
+            <div className="mt-0.5 break-all font-mono text-sm">{String(fileRow[1])}</div>
+          </div>
+        </div>
+        {stats.lastScanError && !scanError && (
+          <p className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-danger">
+            {t("admin.overview.lastScanFailed", { error: stats.lastScanError })}
+          </p>
+        )}
+        <p className="leading-relaxed text-fg/55">{t("admin.overview.scanHint")}</p>
+        <div>
+          <button onClick={() => void scan()} disabled={scanning || stats.scanning} className="btn btn-primary btn-md">
+            {scanning || stats.scanning ? <span className="spinner border-white/30 border-t-white" /> : <RefreshCw size={15} />}
+            {scanning || stats.scanning ? t("admin.overview.scanning") : t("admin.overview.scan")}
+          </button>
+        </div>
+        {result && (
+          <p className="rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-success">
+            {t("admin.overview.scanResult", { ...result })}
+          </p>
+        )}
+        {scanError && <p className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-danger">{scanError}</p>}
+      </section>
     </div>
   );
 }
@@ -176,34 +218,35 @@ function GamesTab() {
   }, []);
 
   return (
-    <table className="w-full text-left max-w-3xl">
-      <thead className="text-neon/50 text-xs uppercase">
-        <tr>
-          <th className="py-2 pr-3">{t("admin.games.inviteCode")}</th>
-          <th className="py-2 pr-3">{t("admin.games.phase")}</th>
-          <th className="py-2 pr-3">{t("admin.games.players")}</th>
-          <th className="py-2 pr-3">{t("admin.games.turn")}</th>
-          <th className="py-2" />
-        </tr>
-      </thead>
-      <tbody>
-        {games.map((g) => (
-          <tr key={g.gameId} className="border-b border-border/50 hover:bg-white/[0.03] transition-colors">
-            <td className="py-2 pr-3 font-mono">{g.inviteCode}</td>
-            <td className="py-2 pr-3">{g.phase}</td>
-            <td className="py-2 pr-3 tabular-nums">{g.playerCount}</td>
-            <td className="py-2 pr-3 tabular-nums">{g.turnNumber}</td>
-            <td className="py-2">
-              <button
-                onClick={() => void api.adminForceEndGame(g.gameId).then(load)}
-                className="text-danger/80 hover:text-danger transition-colors"
-              >
-                {t("admin.games.forceEnd")}
-              </button>
-            </td>
+    <div className="surface overflow-hidden p-0">
+      <table className="w-full text-left">
+        <thead className="border-b border-white/[0.06] text-[11px] uppercase tracking-[0.12em] text-fg/45">
+          <tr>
+            <th className="px-5 py-3 font-semibold">{t("admin.games.inviteCode")}</th>
+            <th className="px-5 py-3 font-semibold">{t("admin.games.phase")}</th>
+            <th className="px-5 py-3 font-semibold">{t("admin.games.players")}</th>
+            <th className="px-5 py-3 font-semibold">{t("admin.games.turn")}</th>
+            <th className="px-5 py-3" />
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody className="divide-y divide-white/[0.05]">
+          {games.map((g) => (
+            <tr key={g.gameId} className="transition-colors hover:bg-white/[0.03]">
+              <td className="px-5 py-3 font-mono tracking-[0.15em]">{g.inviteCode}</td>
+              <td className="px-5 py-3">
+                <span className="chip">{g.phase}</span>
+              </td>
+              <td className="px-5 py-3 tabular-nums">{g.playerCount}</td>
+              <td className="px-5 py-3 tabular-nums">{g.turnNumber}</td>
+              <td className="px-5 py-3 text-right">
+                <button onClick={() => void api.adminForceEndGame(g.gameId).then(load)} className="btn btn-danger btn-sm">
+                  {t("admin.games.forceEnd")}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

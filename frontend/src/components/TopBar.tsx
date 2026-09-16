@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Volume2, VolumeX, Wifi, WifiOff } from "lucide-react";
+import { AudioLines, Flag, SkipForward, Volume2, VolumeX, Wifi, WifiOff } from "lucide-react";
 import { useGameStore } from "../store/gameStore";
 import { audioPlayer } from "../audio/instance";
 import CountdownRing from "./CountdownRing";
 import LanguageToggle from "./LanguageToggle";
+import { Slider } from "./ui";
 
 // PLACING has no entry: it has no deadline (the track loops until the
 // active player submits or the host skips), so CountdownRing renders idle.
@@ -28,18 +29,29 @@ export default function TopBar() {
   const serverNow = () => useGameStore.getState().socket?.clock.serverNow() ?? Date.now();
 
   return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3 card-surface">
-      <div className="flex items-center gap-3 min-w-0">
-        <span className="text-sm font-semibold tabular-nums shrink-0">{t("board.turn", { number: state.turnNumber })}</span>
-        <span className="text-sm text-neon/60 truncate">
-          {isYourTurn ? t("board.yourTurn") : t("board.playerTurn", { name: activePlayer?.name ?? "" })}
+    <header className="surface flex items-center gap-3 rounded-2xl px-3 py-2.5 sm:gap-4 sm:px-4">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <span className="brand-mark hidden h-9 w-9 shrink-0 sm:flex">
+          <AudioLines size={18} strokeWidth={2.25} />
         </span>
+        <div className="min-w-0">
+          <div className="eyebrow tabular-nums">{t("board.turn", { number: state.turnNumber })}</div>
+          <div className="flex items-center gap-2 truncate text-sm font-semibold">
+            {activePlayer && <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: activePlayer.colour }} />}
+            <span className={`truncate ${isYourTurn ? "brand-text" : ""}`}>
+              {isYourTurn ? t("board.yourTurn") : t("board.playerTurn", { name: activePlayer?.name ?? "" })}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <CountdownRing deadlineMs={state.phaseEndsAtServerMs} totalMs={PHASE_DURATIONS[state.phase] ?? 0} serverNow={serverNow} size={44} />
+      {/* An idle ring only takes space on narrow screens. */}
+      <span className={state.phaseEndsAtServerMs === null ? "hidden sm:inline-flex" : "inline-flex"}>
+        <CountdownRing deadlineMs={state.phaseEndsAtServerMs} totalMs={PHASE_DURATIONS[state.phase] ?? 0} serverNow={serverNow} size={42} />
+      </span>
 
-      <div className="flex items-center gap-4 shrink-0">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-1 items-center justify-end gap-1.5 sm:gap-2">
+        <div className="hidden items-center gap-1 rounded-lg border border-white/[0.07] bg-white/[0.03] pl-1 pr-3 md:flex">
           <button
             onClick={() => {
               const next = !muted;
@@ -47,12 +59,11 @@ export default function TopBar() {
               audioPlayer.setMuted(next);
             }}
             aria-label="mute"
-            className="hover:text-accent hover:drop-shadow-neon transition-all duration-150"
+            className="icon-btn h-8 w-8"
           >
-            {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
-          <input
-            type="range"
+          <Slider
             min={0}
             max={1}
             step={0.05}
@@ -62,27 +73,42 @@ export default function TopBar() {
               setVolume(v);
               audioPlayer.setVolume(v);
             }}
-            className="w-20 accent-accent"
+            className="w-20"
           />
         </div>
+        <button
+          onClick={() => {
+            const next = !muted;
+            setMuted(next);
+            audioPlayer.setMuted(next);
+          }}
+          aria-label="mute"
+          className="icon-btn md:hidden"
+        >
+          {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+        </button>
 
-        {connected ? <Wifi size={16} className="text-success drop-shadow-[0_0_4px_rgba(57,255,136,0.6)]" /> : <WifiOff size={16} className="text-danger" />}
-        <LanguageToggle />
+        <span
+          className={`flex h-9 w-9 items-center justify-center rounded-lg ${connected ? "text-success" : "text-danger"}`}
+          title={connected ? "connected" : "disconnected"}
+        >
+          {connected ? <Wifi size={16} /> : <WifiOff size={16} />}
+        </span>
+        <LanguageToggle className="hidden sm:inline-flex" />
 
         {state.hostId === state.youId && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => socket?.skipTrack()}
-              className="text-xs bg-white/10 hover:bg-white/20 hover:shadow-neon-cyan transition-all duration-150 rounded-md px-2.5 py-1.5"
-            >
-              {t("board.skip")}
+          <div className="flex items-center gap-1 border-l border-white/[0.08] pl-1.5 sm:pl-2">
+            <button onClick={() => socket?.skipTrack()} className="btn btn-secondary btn-sm h-9" title={t("board.skip")}>
+              <SkipForward size={14} />
+              <span className="hidden lg:inline">{t("board.skip")}</span>
             </button>
-            <button onClick={() => socket?.endGame()} className="text-xs text-danger/80 hover:text-danger transition-colors px-2">
-              {t("board.endGame")}
+            <button onClick={() => socket?.endGame()} className="btn btn-danger btn-sm h-9" title={t("board.endGame")}>
+              <Flag size={14} />
+              <span className="hidden lg:inline">{t("board.endGame")}</span>
             </button>
           </div>
         )}
       </div>
-    </div>
+    </header>
   );
 }

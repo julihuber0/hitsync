@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-const COLOURS = ["#ff2bd6", "#00e5ff", "#39ff88", "#ffbef7", "#ffea00", "#ff3864"];
+const COLOURS = ["#e043f5", "#7c5cff", "#38d9f5", "#fbbf24", "#34d399", "#ffffff"];
 
 interface Particle {
   x: number;
@@ -52,8 +52,6 @@ export default function Confetti() {
         ctx.translate(p.x, p.y);
         ctx.rotate((p.rotation * Math.PI) / 180);
         ctx.fillStyle = p.colour;
-        ctx.shadowColor = p.colour;
-        ctx.shadowBlur = 8;
         ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
         ctx.restore();
       }

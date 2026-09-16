@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { api } from "../api/client";
 import { useAppStore } from "../store/appStore";
 import LanguageToggle from "../components/LanguageToggle";
+import { Aurora, Logo } from "../components/ui";
 
 export default function AccessGatePage() {
   const { t } = useTranslation();
@@ -31,17 +32,9 @@ export default function AccessGatePage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(60% 60% at 30% 20%, rgba(255,43,214,0.18), transparent), radial-gradient(50% 50% at 80% 80%, rgba(0,229,255,0.14), transparent)",
-        }}
-      />
-      <div aria-hidden className="neon-grid-floor pointer-events-none absolute inset-x-0 bottom-0 h-1/2 animate-grid-scroll" />
-      <LanguageToggle className="absolute top-6 right-6" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
+      <Aurora />
+      <LanguageToggle className="absolute right-5 top-5" />
 
       <motion.form
         onSubmit={submit}
@@ -49,30 +42,30 @@ export default function AccessGatePage() {
         initial={{ opacity: 0, y: 12 }}
         animate={error ? { opacity: 1, y: 0, x: [0, -10, 10, -8, 8, -4, 4, 0] } : { opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="relative card-surface shadow-neon w-full max-w-sm mx-4 p-8 flex flex-col items-center gap-6"
+        className="surface relative flex w-full max-w-sm flex-col items-center gap-7 p-8 sm:p-10"
       >
-        <div className="neon-heading text-2xl font-semibold tracking-tight text-accent">{t("app.name")}</div>
+        <Logo size="lg" />
         <div className="text-center">
-          <h1 className="text-lg font-semibold">{t("gate.title")}</h1>
-          <p className="text-sm text-neon/60 mt-1">{t("gate.subtitle")}</p>
+          <h1 className="text-xl font-semibold tracking-tight">{t("gate.title")}</h1>
+          <p className="mt-1.5 text-sm text-fg/55">{t("gate.subtitle")}</p>
         </div>
 
-        <input
-          autoFocus
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          placeholder={t("gate.codePlaceholder")}
-          className="neon-focus w-full text-center text-xl font-mono tracking-[0.3em] bg-black/30 border border-border rounded-lg py-3 px-4 outline-none focus:border-accent transition-colors"
-          maxLength={32}
-        />
+        <div className="flex w-full flex-col gap-2">
+          <input
+            autoFocus
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder={t("gate.codePlaceholder")}
+            className={`input h-14 text-center font-mono text-lg tracking-[0.3em] placeholder:tracking-[0.2em] ${
+              error ? "border-danger/60 focus:border-danger/60 focus:ring-danger/15" : ""
+            }`}
+            maxLength={32}
+          />
+          {error && <p className="text-center text-sm text-danger">{t("gate.error")}</p>}
+        </div>
 
-        {error && <p className="text-danger text-sm -mt-3">{t("gate.error")}</p>}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full bg-accent hover:brightness-110 hover:shadow-neon active:scale-[0.97] transition-all duration-200 text-white font-semibold py-3 rounded-lg disabled:opacity-50 disabled:hover:shadow-none"
-        >
+        <button type="submit" disabled={submitting} className="btn btn-primary btn-lg w-full">
+          {submitting && <span className="spinner border-white/30 border-t-white" />}
           {t("gate.submit")}
         </button>
       </motion.form>
