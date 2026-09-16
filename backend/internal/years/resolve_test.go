@@ -11,27 +11,29 @@ func intp(v int) *int { return &v }
 
 func TestCombine(t *testing.T) {
 	cases := []struct {
-		name             string
-		override, nd, mb *int
-		maxBackdate      int
-		wantYear         int
-		wantSource       string
-		wantOK           bool
+		name                  string
+		override, tag, nd, mb *int
+		maxBackdate           int
+		wantYear              int
+		wantSource            string
+		wantOK                bool
 	}{
-		{"override wins", intp(1980), intp(1990), intp(1970), 0, 1980, SourceManual, true},
-		{"both present, mb earlier", nil, intp(1990), intp(1970), 0, 1970, SourceMusicBrainz, true},
-		{"both present, nd earlier", nil, intp(1970), intp(1990), 0, 1970, SourceLibrary, true},
-		{"both present, equal", nil, intp(1975), intp(1975), 0, 1975, SourceBoth, true},
-		{"only nd", nil, intp(1975), nil, 0, 1975, SourceLibrary, true},
-		{"only mb", nil, nil, intp(1975), 0, 1975, SourceMusicBrainz, true},
-		{"neither", nil, nil, nil, 0, 0, "", false},
-		{"backdate guard triggers", nil, intp(2000), intp(1950), 10, 2000, SourceLibrary, true},
-		{"backdate guard off", nil, intp(2000), intp(1950), 0, 1950, SourceMusicBrainz, true},
-		{"backdate guard does not trigger under threshold", nil, intp(2000), intp(1995), 10, 1995, SourceMusicBrainz, true},
+		{"override wins", intp(1980), intp(1985), intp(1990), intp(1970), 0, 1980, SourceManual, true},
+		{"tag wins over navidrome/mb", nil, intp(1960), intp(1990), intp(1970), 0, 1960, SourceTag, true},
+		{"tag wins even without others", nil, intp(1960), nil, nil, 0, 1960, SourceTag, true},
+		{"both present, mb earlier", nil, nil, intp(1990), intp(1970), 0, 1970, SourceMusicBrainz, true},
+		{"both present, nd earlier", nil, nil, intp(1970), intp(1990), 0, 1970, SourceLibrary, true},
+		{"both present, equal", nil, nil, intp(1975), intp(1975), 0, 1975, SourceBoth, true},
+		{"only nd", nil, nil, intp(1975), nil, 0, 1975, SourceLibrary, true},
+		{"only mb", nil, nil, nil, intp(1975), 0, 1975, SourceMusicBrainz, true},
+		{"neither", nil, nil, nil, nil, 0, 0, "", false},
+		{"backdate guard triggers", nil, nil, intp(2000), intp(1950), 10, 2000, SourceLibrary, true},
+		{"backdate guard off", nil, nil, intp(2000), intp(1950), 0, 1950, SourceMusicBrainz, true},
+		{"backdate guard does not trigger under threshold", nil, nil, intp(2000), intp(1995), 10, 1995, SourceMusicBrainz, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			year, source, ok := Combine(c.override, c.nd, c.mb, c.maxBackdate)
+			year, source, ok := Combine(c.override, c.tag, c.nd, c.mb, c.maxBackdate)
 			if ok != c.wantOK {
 				t.Fatalf("ok = %v, want %v", ok, c.wantOK)
 			}

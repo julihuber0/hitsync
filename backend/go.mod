@@ -5,6 +5,7 @@ go 1.23
 require (
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/coder/websocket v1.8.12
+	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8
 	github.com/go-chi/chi/v5 v5.2.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/golang-migrate/migrate/v4 v4.18.1

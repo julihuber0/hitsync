@@ -175,3 +175,16 @@ func (c *Client) StreamURL(trackID, format string, maxBitRate int) (string, erro
 	v.Set("maxBitRate", strconv.Itoa(maxBitRate))
 	return fmt.Sprintf("%s/rest/stream.view?%s", c.baseURL, v.Encode()), nil
 }
+
+// RawStreamURL builds a stream URL for the original, untranscoded file
+// (format=raw), so custom tags embedded in it can be read directly — these
+// are not exposed by any of Navidrome's own metadata endpoints.
+func (c *Client) RawStreamURL(trackID string) (string, error) {
+	v, err := c.authParams()
+	if err != nil {
+		return "", err
+	}
+	v.Set("id", trackID)
+	v.Set("format", "raw")
+	return fmt.Sprintf("%s/rest/stream.view?%s", c.baseURL, v.Encode()), nil
+}

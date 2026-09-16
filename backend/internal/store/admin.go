@@ -4,13 +4,15 @@ import "context"
 
 // AdminTrackRow is one row of the admin library table (§12.3 GET /api/admin/tracks).
 type AdminTrackRow struct {
-	ID            string
-	Title         string
-	Artist        string
-	Album         string
-	NavidromeYear *int
-	OverrideYear  *int
-	ExcludedKind  *string // "track" | "album" | "artist" | nil
+	ID              string
+	Title           string
+	Artist          string
+	Album           string
+	NavidromeYear   *int
+	HitsyncYear     *int
+	HitsyncExcluded bool
+	OverrideYear    *int
+	ExcludedKind    *string // "track" | "album" | "artist" | nil
 }
 
 // SearchAdminTracks searches title/artist/album and reports override/exclusion
@@ -28,7 +30,7 @@ func (s *Store) SearchAdminTracks(ctx context.Context, q string, excludedFilter 
 
 	const base = `
 		WITH matched AS (
-			SELECT t.id, t.title, t.artist, t.album, t.navidrome_year, yo.year AS override_year,
+			SELECT t.id, t.title, t.artist, t.album, t.navidrome_year, t.hitsync_year, t.hitsync_exclude, yo.year AS override_year,
 				(SELECT e.kind::text FROM exclusions e
 				 WHERE (e.kind = 'track' AND e.ref_id = t.id)
 					OR (e.kind = 'album' AND e.ref_id = t.album_id)
@@ -37,10 +39,12 @@ func (s *Store) SearchAdminTracks(ctx context.Context, q string, excludedFilter 
 			FROM tracks t
 			LEFT JOIN year_overrides yo ON yo.track_id = t.id
 		)
-		SELECT id, title, artist, album, navidrome_year, override_year, excluded_kind
+		SELECT id, title, artist, album, navidrome_year, hitsync_year, hitsync_exclude, override_year, excluded_kind
 		FROM matched
 		WHERE ($1 = '' OR title ILIKE '%' || $1 || '%' OR artist ILIKE '%' || $1 || '%' OR album ILIKE '%' || $1 || '%')
-		  AND ($2::text IS NULL OR ($2 = 'true' AND excluded_kind IS NOT NULL) OR ($2 = 'false' AND excluded_kind IS NULL))
+		  AND ($2::text IS NULL
+		       OR ($2 = 'true' AND (excluded_kind IS NOT NULL OR hitsync_exclude))
+		       OR ($2 = 'false' AND excluded_kind IS NULL AND NOT hitsync_exclude))
 	`
 
 	var total int
@@ -58,7 +62,7 @@ func (s *Store) SearchAdminTracks(ctx context.Context, q string, excludedFilter 
 	for rows.Next() {
 		var r AdminTrackRow
 		var album *string
-		if err := rows.Scan(&r.ID, &r.Title, &r.Artist, &album, &r.NavidromeYear, &r.OverrideYear, &r.ExcludedKind); err != nil {
+		if err := rows.Scan(&r.ID, &r.Title, &r.Artist, &album, &r.NavidromeYear, &r.HitsyncYear, &r.HitsyncExcluded, &r.OverrideYear, &r.ExcludedKind); err != nil {
 			return nil, 0, err
 		}
 		if album != nil {

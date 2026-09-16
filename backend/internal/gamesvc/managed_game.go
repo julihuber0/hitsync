@@ -51,6 +51,7 @@ type ManagedGame struct {
 	pendingSongGuess  *pendingSongGuess
 	currentYearSource string
 	lastPrep          *lastPrepare
+	pendingWinnerID   string // captured winner while a game-ending reveal is still showing (§8.9)
 
 	createdAt time.Time
 	startedAt time.Time

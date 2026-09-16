@@ -297,14 +297,33 @@ func (mg *ManagedGame) beginRevealing() {
 	}
 
 	if mg.g.Phase == game.PhaseGameOver {
-		mg.clearPhaseTimeout()
+		// The winning card's reveal should still be shown for RevealDuration,
+		// the same as any other turn, before the end screen appears (§8.9).
+		// The win itself is already decided (WinnerID captured); only the
+		// client-visible phase transition is delayed, by keeping the phase at
+		// REVEALING for the wait and re-asserting the winner in
+		// finalizeGameOver in case a player-count drop in the meantime would
+		// otherwise have cleared it (game.Game.RemovePlayer).
+		mg.pendingWinnerID = mg.g.WinnerID
+		mg.g.Phase = game.PhaseRevealing
+		mg.schedulePhaseTimeout(mg.cfg.RevealDuration, mg.finalizeGameOver)
 		mg.broadcastState()
-		mg.persistOnGameOver()
 		return
 	}
 
 	mg.schedulePhaseTimeout(mg.cfg.RevealDuration, mg.onRevealTimeout)
 	mg.broadcastState()
+}
+
+// finalizeGameOver transitions to GAME_OVER once the winning turn's reveal
+// has been shown for RevealDuration, mirroring the non-winning
+// onRevealTimeout path (§8.9).
+func (mg *ManagedGame) finalizeGameOver() {
+	mg.g.Phase = game.PhaseGameOver
+	mg.g.WinnerID = mg.pendingWinnerID
+	mg.clearPhaseTimeout()
+	mg.broadcastState()
+	mg.persistOnGameOver()
 }
 
 func normalizedEquals(a, b string) bool {

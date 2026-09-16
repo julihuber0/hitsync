@@ -6,15 +6,26 @@ import (
 	"context"
 	"log/slog"
 	"math/rand"
+	"net/http"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/julianhuber/hitsync/backend/internal/navidrome"
+	"github.com/julianhuber/hitsync/backend/internal/rawtags"
 	"github.com/julianhuber/hitsync/backend/internal/store"
 	"github.com/julianhuber/hitsync/backend/internal/years"
 )
 
 const pageSize = 500
+
+// tagFetchConcurrency bounds how many tracks' custom tags are fetched from
+// Navidrome at once during a sync pass.
+const tagFetchConcurrency = 8
+
+// tagFetchTimeout bounds a single track's custom-tag read, so one
+// unreachable or oddly-shaped file cannot stall a whole sync pass.
+const tagFetchTimeout = 15 * time.Second
 
 // Summary reports the outcome of a sync pass.
 type Summary struct {
@@ -28,12 +39,13 @@ type Syncer struct {
 	nav           *navidrome.Client
 	st            *store.Store
 	log           *slog.Logger
+	tagClient     *http.Client
 	lastSyncStart atomic.Int64 // unix nanos of the most recent successful sync start
 }
 
 // New creates a Syncer.
 func New(nav *navidrome.Client, st *store.Store, log *slog.Logger) *Syncer {
-	return &Syncer{nav: nav, st: st, log: log}
+	return &Syncer{nav: nav, st: st, log: log, tagClient: &http.Client{Timeout: tagFetchTimeout}}
 }
 
 // LastSyncStart returns the start time of the most recent successful sync
@@ -65,24 +77,29 @@ func (s *Syncer) SyncOnce(ctx context.Context) Summary {
 			break
 		}
 
+		tagResults := s.fetchHitsyncTags(ctx, songs)
+
 		for _, song := range songs {
 			var yr *int
 			if song.Year > 0 {
 				y := song.Year
 				yr = &y
 			}
+			tags := tagResults[song.ID]
 			inserted, err := s.st.UpsertTrack(ctx, store.UpsertTrackParams{
-				ID:            song.ID,
-				Title:         song.Title,
-				Artist:        song.Artist,
-				ArtistID:      song.ArtistID,
-				Album:         song.Album,
-				AlbumID:       song.AlbumID,
-				NavidromeYear: yr,
-				DurationSec:   song.Duration,
-				NormTitle:     years.NormalizeTitle(song.Title),
-				NormArtist:    years.NormalizeArtist(song.Artist),
-				LastSeenAt:    start,
+				ID:             song.ID,
+				Title:          song.Title,
+				Artist:         song.Artist,
+				ArtistID:       song.ArtistID,
+				Album:          song.Album,
+				AlbumID:        song.AlbumID,
+				NavidromeYear:  yr,
+				HitsyncYear:    tags.Year,
+				HitsyncExclude: tags.Exclude,
+				DurationSec:    song.Duration,
+				NormTitle:      years.NormalizeTitle(song.Title),
+				NormArtist:     years.NormalizeArtist(song.Artist),
+				LastSeenAt:     start,
 			})
 			if err != nil {
 				s.log.Error("library sync: upsert failed", "track_id", song.ID, "error", err)
@@ -117,6 +134,48 @@ func (s *Syncer) SyncOnce(ctx context.Context) Summary {
 		"added", summary.Added, "updated", summary.Updated, "removed", summary.Removed,
 		"failed", summary.Failed, "duration_ms", summary.Duration.Milliseconds())
 	return summary
+}
+
+// fetchHitsyncTags reads the HITSYNCYEAR/HITSYNCEXCLUDE custom tags for a
+// page of songs directly from their audio files (Navidrome does not expose
+// custom tags through its own API), bounded to tagFetchConcurrency
+// concurrent reads. A song missing from the result, or whose read failed,
+// is treated as "no custom tags" rather than failing the sync.
+func (s *Syncer) fetchHitsyncTags(ctx context.Context, songs []navidrome.Song) map[string]rawtags.Result {
+	results := make(map[string]rawtags.Result, len(songs))
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, tagFetchConcurrency)
+
+	for _, song := range songs {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(song navidrome.Song) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			res, err := s.fetchOneHitsyncTags(ctx, song.ID)
+			if err != nil {
+				s.log.Warn("library sync: reading custom tags failed", "track_id", song.ID, "error", err)
+				return
+			}
+			mu.Lock()
+			results[song.ID] = res
+			mu.Unlock()
+		}(song)
+	}
+	wg.Wait()
+	return results
+}
+
+func (s *Syncer) fetchOneHitsyncTags(ctx context.Context, trackID string) (rawtags.Result, error) {
+	rawURL, err := s.nav.RawStreamURL(trackID)
+	if err != nil {
+		return rawtags.Result{}, err
+	}
+	fetchCtx, cancel := context.WithTimeout(ctx, tagFetchTimeout)
+	defer cancel()
+	return rawtags.Fetch(fetchCtx, s.tagClient, rawURL)
 }
 
 // RunPeriodic runs an initial sync immediately, then repeats every interval

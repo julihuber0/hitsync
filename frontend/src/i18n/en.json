@@ -114,6 +114,7 @@
     "sourceMusicBrainz": "MusicBrainz",
     "sourceBoth": "Both",
     "sourceManual": "Manual",
+    "sourceTag": "File Tag",
     "songGuessCorrect": "Bonus token earned!",
     "continuing": "Next turn starting…"
   },
@@ -165,6 +166,7 @@
       "columnArtist": "Artist",
       "columnAlbum": "Album",
       "columnYear": "Navidrome year",
+      "columnTagYear": "Tag year",
       "columnOverride": "Override",
       "columnExcluded": "Excluded",
       "exclude": "Exclude",

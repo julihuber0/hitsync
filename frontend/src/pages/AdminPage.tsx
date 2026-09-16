@@ -125,6 +125,8 @@ interface AdminTrack {
   artist: string;
   album: string;
   navidromeYear: number | null;
+  hitsyncYear: number | null;
+  hitsyncExcluded: boolean;
   overrideYear: number | null;
   excludedKind: string | null;
 }
@@ -188,6 +190,7 @@ function LibraryTab() {
               <th className="py-2 pr-3">{t("admin.library.columnArtist")}</th>
               <th className="py-2 pr-3">{t("admin.library.columnAlbum")}</th>
               <th className="py-2 pr-3">{t("admin.library.columnYear")}</th>
+              <th className="py-2 pr-3">{t("admin.library.columnTagYear")}</th>
               <th className="py-2 pr-3">{t("admin.library.columnOverride")}</th>
               <th className="py-2 pr-3">{t("admin.library.columnExcluded")}</th>
               <th className="py-2" />
@@ -200,8 +203,9 @@ function LibraryTab() {
                 <td className="py-2 pr-3">{track.artist}</td>
                 <td className="py-2 pr-3 text-neon/50">{track.album}</td>
                 <td className="py-2 pr-3 tabular-nums">{track.navidromeYear ?? "—"}</td>
+                <td className="py-2 pr-3 tabular-nums">{track.hitsyncYear ?? "—"}</td>
                 <td className="py-2 pr-3 tabular-nums">{track.overrideYear ?? "—"}</td>
-                <td className="py-2 pr-3">{track.excludedKind ?? "—"}</td>
+                <td className="py-2 pr-3">{track.excludedKind ?? (track.hitsyncExcluded ? "tag" : "—")}</td>
                 <td className="py-2 flex gap-2 whitespace-nowrap">
                   <button onClick={() => toggleExclude(track)} className="text-accent hover:underline hover:drop-shadow-neon transition-all">
                     {track.excludedKind ? t("admin.library.include") : t("admin.library.exclude")}

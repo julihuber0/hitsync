@@ -13,6 +13,7 @@ const (
 	SourceLibrary     = "Library"
 	SourceBoth        = "Both"
 	SourceManual      = "Manual"
+	SourceTag         = "Tag"
 )
 
 // MBResolver is the subset of *musicbrainz.Client used here, so tests can
@@ -89,12 +90,19 @@ func (r *Resolver) CacheLen() int {
 	return r.cache.Len()
 }
 
-// Combine implements the earliest-wins combiner from §9.4. overrideYear,
-// navidromeYear and mbYear are nil when absent. maxBackdate is
-// YEAR_MAX_BACKDATE (0 disables the guard).
-func Combine(overrideYear, navidromeYear, mbYear *int, maxBackdate int) (year int, source string, ok bool) {
+// Combine implements the earliest-wins combiner from §9.4. overrideYear
+// (admin manual correction) takes top precedence, then tagYear (the
+// HITSYNCYEAR file tag, an explicit per-track correction embedded by the
+// library owner) short-circuits the rest, and only then does the
+// MusicBrainz/Navidrome earliest-wins comparison apply as a fallback.
+// overrideYear, tagYear, navidromeYear and mbYear are nil when absent.
+// maxBackdate is YEAR_MAX_BACKDATE (0 disables the guard).
+func Combine(overrideYear, tagYear, navidromeYear, mbYear *int, maxBackdate int) (year int, source string, ok bool) {
 	if overrideYear != nil {
 		return *overrideYear, SourceManual, true
+	}
+	if tagYear != nil {
+		return *tagYear, SourceTag, true
 	}
 
 	nd, mb := navidromeYear, mbYear

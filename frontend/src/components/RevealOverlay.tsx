@@ -12,6 +12,8 @@ function sourceLabel(t: (k: string) => string, source: string): string {
       return t("reveal.sourceBoth");
     case "Manual":
       return t("reveal.sourceManual");
+    case "Tag":
+      return t("reveal.sourceTag");
     default:
       return source;
   }

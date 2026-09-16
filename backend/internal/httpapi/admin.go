@@ -55,13 +55,15 @@ func (a *API) handleAdminTracks(w http.ResponseWriter, r *http.Request) {
 	out := make([]map[string]any, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, map[string]any{
-			"id":            row.ID,
-			"title":         row.Title,
-			"artist":        row.Artist,
-			"album":         row.Album,
-			"navidromeYear": row.NavidromeYear,
-			"overrideYear":  row.OverrideYear,
-			"excludedKind":  row.ExcludedKind,
+			"id":              row.ID,
+			"title":           row.Title,
+			"artist":          row.Artist,
+			"album":           row.Album,
+			"navidromeYear":   row.NavidromeYear,
+			"hitsyncYear":     row.HitsyncYear,
+			"hitsyncExcluded": row.HitsyncExcluded,
+			"overrideYear":    row.OverrideYear,
+			"excludedKind":    row.ExcludedKind,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"tracks": out, "total": total, "page": page, "pageSize": pageSize})
@@ -227,8 +229,10 @@ func (a *API) handleResolveYear(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"trackId":       trackID,
-		"navidromeYear": tr.NavidromeYear,
+		"trackId":         trackID,
+		"navidromeYear":   tr.NavidromeYear,
+		"hitsyncYear":     tr.HitsyncYear,
+		"hitsyncExcluded": tr.HitsyncExclude,
 		"musicBrainz": map[string]any{
 			"year":   mbYear,
 			"source": mbSource,

@@ -7,39 +7,43 @@ import (
 
 // Track mirrors a row of the tracks table.
 type Track struct {
-	ID            string
-	Title         string
-	Artist        string
-	ArtistID      string
-	Album         string
-	AlbumID       string
-	NavidromeYear *int
-	DurationSec   int
-	NormTitle     string
-	NormArtist    string
+	ID             string
+	Title          string
+	Artist         string
+	ArtistID       string
+	Album          string
+	AlbumID        string
+	NavidromeYear  *int
+	HitsyncYear    *int
+	HitsyncExclude bool
+	DurationSec    int
+	NormTitle      string
+	NormArtist     string
 }
 
 // UpsertTrackParams is the input to UpsertTrack.
 type UpsertTrackParams struct {
-	ID            string
-	Title         string
-	Artist        string
-	ArtistID      string
-	Album         string
-	AlbumID       string
-	NavidromeYear *int
-	DurationSec   int
-	NormTitle     string
-	NormArtist    string
-	LastSeenAt    time.Time
+	ID             string
+	Title          string
+	Artist         string
+	ArtistID       string
+	Album          string
+	AlbumID        string
+	NavidromeYear  *int
+	HitsyncYear    *int
+	HitsyncExclude bool
+	DurationSec    int
+	NormTitle      string
+	NormArtist     string
+	LastSeenAt     time.Time
 }
 
 // UpsertTrack inserts or updates a track row from a library sync page. It
 // reports whether the row was newly inserted (true) or updated (false).
 func (s *Store) UpsertTrack(ctx context.Context, p UpsertTrackParams) (inserted bool, err error) {
 	err = s.Pool.QueryRow(ctx, `
-		INSERT INTO tracks (id, title, artist, artist_id, album, album_id, navidrome_year, duration_sec, norm_title, norm_artist, last_seen_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		INSERT INTO tracks (id, title, artist, artist_id, album, album_id, navidrome_year, hitsync_year, hitsync_exclude, duration_sec, norm_title, norm_artist, last_seen_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		ON CONFLICT (id) DO UPDATE SET
 			title = EXCLUDED.title,
 			artist = EXCLUDED.artist,
@@ -47,12 +51,14 @@ func (s *Store) UpsertTrack(ctx context.Context, p UpsertTrackParams) (inserted 
 			album = EXCLUDED.album,
 			album_id = EXCLUDED.album_id,
 			navidrome_year = EXCLUDED.navidrome_year,
+			hitsync_year = EXCLUDED.hitsync_year,
+			hitsync_exclude = EXCLUDED.hitsync_exclude,
 			duration_sec = EXCLUDED.duration_sec,
 			norm_title = EXCLUDED.norm_title,
 			norm_artist = EXCLUDED.norm_artist,
 			last_seen_at = EXCLUDED.last_seen_at
 		RETURNING (xmax = 0)
-	`, p.ID, p.Title, p.Artist, nullableString(p.ArtistID), p.Album, nullableString(p.AlbumID), p.NavidromeYear, p.DurationSec, p.NormTitle, p.NormArtist, p.LastSeenAt).Scan(&inserted)
+	`, p.ID, p.Title, p.Artist, nullableString(p.ArtistID), p.Album, nullableString(p.AlbumID), p.NavidromeYear, p.HitsyncYear, p.HitsyncExclude, p.DurationSec, p.NormTitle, p.NormArtist, p.LastSeenAt).Scan(&inserted)
 	return inserted, err
 }
 
@@ -106,7 +112,7 @@ func (s *Store) RandomEligibleTracks(ctx context.Context, excludeIDs []string, m
 		excludeIDs = []string{}
 	}
 	rows, err := s.Pool.Query(ctx, `
-		SELECT id, title, artist, artist_id, album, album_id, navidrome_year, duration_sec, norm_title, norm_artist
+		SELECT id, title, artist, artist_id, album, album_id, navidrome_year, hitsync_year, hitsync_exclude, duration_sec, norm_title, norm_artist
 		FROM eligible_tracks
 		WHERE duration_sec BETWEEN $1 AND $2
 		  AND last_seen_at >= $3
@@ -123,7 +129,7 @@ func (s *Store) RandomEligibleTracks(ctx context.Context, excludeIDs []string, m
 	for rows.Next() {
 		var t Track
 		var artistID, album, albumID *string
-		if err := rows.Scan(&t.ID, &t.Title, &t.Artist, &artistID, &album, &albumID, &t.NavidromeYear, &t.DurationSec, &t.NormTitle, &t.NormArtist); err != nil {
+		if err := rows.Scan(&t.ID, &t.Title, &t.Artist, &artistID, &album, &albumID, &t.NavidromeYear, &t.HitsyncYear, &t.HitsyncExclude, &t.DurationSec, &t.NormTitle, &t.NormArtist); err != nil {
 			return nil, err
 		}
 		if artistID != nil {
@@ -145,9 +151,9 @@ func (s *Store) GetTrack(ctx context.Context, id string) (*Track, error) {
 	var t Track
 	var artistID, album, albumID *string
 	err := s.Pool.QueryRow(ctx, `
-		SELECT id, title, artist, artist_id, album, album_id, navidrome_year, duration_sec, norm_title, norm_artist
+		SELECT id, title, artist, artist_id, album, album_id, navidrome_year, hitsync_year, hitsync_exclude, duration_sec, norm_title, norm_artist
 		FROM tracks WHERE id = $1
-	`, id).Scan(&t.ID, &t.Title, &t.Artist, &artistID, &album, &albumID, &t.NavidromeYear, &t.DurationSec, &t.NormTitle, &t.NormArtist)
+	`, id).Scan(&t.ID, &t.Title, &t.Artist, &artistID, &album, &albumID, &t.NavidromeYear, &t.HitsyncYear, &t.HitsyncExclude, &t.DurationSec, &t.NormTitle, &t.NormArtist)
 	if err != nil {
 		if isNoRows(err) {
 			return nil, nil

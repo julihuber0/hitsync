@@ -99,7 +99,7 @@ func (ts *TrackSource) resolveTrack(dbCtx, mbCtx context.Context, tr store.Track
 	// A resolution error (including an expired mbCtx) is treated as
 	// "MusicBrainz absent" rather than a hard failure.
 
-	year, source, ok := years.Combine(overrideYear, tr.NavidromeYear, mbYearPtr, ts.maxBackdate)
+	year, source, ok := years.Combine(overrideYear, tr.HitsyncYear, tr.NavidromeYear, mbYearPtr, ts.maxBackdate)
 	if !ok {
 		return nil, false, nil
 	}
