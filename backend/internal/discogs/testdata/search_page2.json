@@ -1,7 +1,0 @@
-{
-  "pagination": { "page": 2, "pages": 2, "per_page": 100, "items": 3 },
-  "results": [
-    { "type": "master", "title": "Cover Band - Wish You Were Here", "year": "1971" },
-    { "type": "master", "title": "No Year - Wish You Were Here", "year": "" }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "pagination": { "page": 1, "pages": 2, "per_page": 100, "items": 3 },
-  "results": [
-    { "type": "master", "title": "Pink Floyd - Wish You Were Here", "year": "1975" },
-    { "type": "release", "title": "Pink Floyd - Wish You Were Here", "year": "1975" },
-    { "type": "master", "title": "Someone Else - Wish You Were Here", "year": "1999" }
-  ]
-}
