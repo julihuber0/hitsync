@@ -12,26 +12,26 @@ func intp(v int) *int { return &v }
 func TestCombine(t *testing.T) {
 	cases := []struct {
 		name             string
-		override, nd, mb *int
+		override, nd, dg *int
 		maxBackdate      int
 		wantYear         int
 		wantSource       string
 		wantOK           bool
 	}{
 		{"override wins", intp(1980), intp(1990), intp(1970), 0, 1980, SourceManual, true},
-		{"both present, mb earlier", nil, intp(1990), intp(1970), 0, 1970, SourceMusicBrainz, true},
+		{"both present, discogs earlier", nil, intp(1990), intp(1970), 0, 1970, SourceDiscogs, true},
 		{"both present, nd earlier", nil, intp(1970), intp(1990), 0, 1970, SourceLibrary, true},
 		{"both present, equal", nil, intp(1975), intp(1975), 0, 1975, SourceBoth, true},
 		{"only nd", nil, intp(1975), nil, 0, 1975, SourceLibrary, true},
-		{"only mb", nil, nil, intp(1975), 0, 1975, SourceMusicBrainz, true},
+		{"only discogs", nil, nil, intp(1975), 0, 1975, SourceDiscogs, true},
 		{"neither", nil, nil, nil, 0, 0, "", false},
 		{"backdate guard triggers", nil, intp(2000), intp(1950), 10, 2000, SourceLibrary, true},
-		{"backdate guard off", nil, intp(2000), intp(1950), 0, 1950, SourceMusicBrainz, true},
-		{"backdate guard does not trigger under threshold", nil, intp(2000), intp(1995), 10, 1995, SourceMusicBrainz, true},
+		{"backdate guard off", nil, intp(2000), intp(1950), 0, 1950, SourceDiscogs, true},
+		{"backdate guard does not trigger under threshold", nil, intp(2000), intp(1995), 10, 1995, SourceDiscogs, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			year, source, ok := Combine(c.override, c.nd, c.mb, c.maxBackdate)
+			year, source, ok := Combine(c.override, c.nd, c.dg, c.maxBackdate)
 			if ok != c.wantOK {
 				t.Fatalf("ok = %v, want %v", ok, c.wantOK)
 			}
@@ -45,26 +45,26 @@ func TestCombine(t *testing.T) {
 	}
 }
 
-type fakeMB struct {
+type fakeDiscogs struct {
 	calls int32
 	year  int
 	found bool
 }
 
-func (f *fakeMB) Resolve(ctx context.Context, title, artist string) (*MBResult, error) {
+func (f *fakeDiscogs) Resolve(ctx context.Context, title, artist string) (*DiscogsResult, error) {
 	atomic.AddInt32(&f.calls, 1)
 	if !f.found {
 		return nil, nil
 	}
-	return &MBResult{Year: f.year, Source: SourceMusicBrainz}, nil
+	return &DiscogsResult{Year: f.year, Source: SourceDiscogs}, nil
 }
 
 func TestResolverCachesRepeatedLookups(t *testing.T) {
-	fake := &fakeMB{year: 1975, found: true}
+	fake := &fakeDiscogs{year: 1975, found: true}
 	r := NewResolver(fake, true, 100, time.Hour)
 
 	for i := 0; i < 5; i++ {
-		year, found, err := r.ResolveMusicBrainzYear(context.Background(), "Wish You Were Here", "Pink Floyd")
+		year, found, err := r.ResolveDiscogsYear(context.Background(), "Wish You Were Here", "Pink Floyd")
 		if err != nil {
 			t.Fatalf("resolve: %v", err)
 		}
@@ -78,11 +78,11 @@ func TestResolverCachesRepeatedLookups(t *testing.T) {
 }
 
 func TestResolverCachesNegativeResults(t *testing.T) {
-	fake := &fakeMB{found: false}
+	fake := &fakeDiscogs{found: false}
 	r := NewResolver(fake, true, 100, time.Hour)
 
 	for i := 0; i < 3; i++ {
-		_, found, err := r.ResolveMusicBrainzYear(context.Background(), "Unknown Song", "Unknown Artist")
+		_, found, err := r.ResolveDiscogsYear(context.Background(), "Unknown Song", "Unknown Artist")
 		if err != nil {
 			t.Fatalf("resolve: %v", err)
 		}
@@ -95,11 +95,11 @@ func TestResolverCachesNegativeResults(t *testing.T) {
 	}
 }
 
-func TestResolverDisabledNeverCallsMusicBrainz(t *testing.T) {
-	fake := &fakeMB{year: 1975, found: true}
+func TestResolverDisabledNeverCallsDiscogs(t *testing.T) {
+	fake := &fakeDiscogs{year: 1975, found: true}
 	r := NewResolver(fake, false, 100, time.Hour)
 
-	_, found, err := r.ResolveMusicBrainzYear(context.Background(), "Wish You Were Here", "Pink Floyd")
+	_, found, err := r.ResolveDiscogsYear(context.Background(), "Wish You Were Here", "Pink Floyd")
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}

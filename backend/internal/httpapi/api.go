@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/julianhuber/hitsync/backend/internal/config"
+	"github.com/julianhuber/hitsync/backend/internal/discogs"
 	"github.com/julianhuber/hitsync/backend/internal/gamesvc"
 	"github.com/julianhuber/hitsync/backend/internal/library"
-	"github.com/julianhuber/hitsync/backend/internal/musicbrainz"
 	"github.com/julianhuber/hitsync/backend/internal/navidrome"
 	"github.com/julianhuber/hitsync/backend/internal/store"
 	"github.com/julianhuber/hitsync/backend/internal/tokens"
@@ -18,22 +18,22 @@ import (
 
 // API holds every dependency the HTTP handlers need.
 type API struct {
-	cfg      *config.Config
-	issuer   *tokens.Issuer
-	st       *store.Store
-	manager  *gamesvc.Manager
-	syncer   *library.Syncer
-	resolver *years.Resolver
-	mbClient *musicbrainz.Client
-	nav      *navidrome.Client
-	log      *slog.Logger
+	cfg           *config.Config
+	issuer        *tokens.Issuer
+	st            *store.Store
+	manager       *gamesvc.Manager
+	syncer        *library.Syncer
+	resolver      *years.Resolver
+	discogsClient *discogs.Client
+	nav           *navidrome.Client
+	log           *slog.Logger
 
 	accessLimiter *ipRateLimiter
 	adminLimiter  *ipRateLimiter
 }
 
 // New creates an API instance.
-func New(cfg *config.Config, issuer *tokens.Issuer, st *store.Store, manager *gamesvc.Manager, syncer *library.Syncer, resolver *years.Resolver, mbClient *musicbrainz.Client, nav *navidrome.Client, log *slog.Logger) *API {
+func New(cfg *config.Config, issuer *tokens.Issuer, st *store.Store, manager *gamesvc.Manager, syncer *library.Syncer, resolver *years.Resolver, discogsClient *discogs.Client, nav *navidrome.Client, log *slog.Logger) *API {
 	return &API{
 		cfg:           cfg,
 		issuer:        issuer,
@@ -41,7 +41,7 @@ func New(cfg *config.Config, issuer *tokens.Issuer, st *store.Store, manager *ga
 		manager:       manager,
 		syncer:        syncer,
 		resolver:      resolver,
-		mbClient:      mbClient,
+		discogsClient: discogsClient,
 		nav:           nav,
 		log:           log,
 		accessLimiter: newIPRateLimiter(10, time.Minute),

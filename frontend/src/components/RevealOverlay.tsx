@@ -4,8 +4,8 @@ import type { RevealPayload, PlayerView } from "../ws/protocol";
 
 function sourceLabel(t: (k: string) => string, source: string): string {
   switch (source) {
-    case "MusicBrainz":
-      return t("reveal.sourceMusicBrainz");
+    case "Discogs":
+      return t("reveal.sourceDiscogs");
     case "Library":
       return t("reveal.sourceLibrary");
     case "Both":

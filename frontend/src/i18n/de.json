@@ -111,7 +111,7 @@
     "stolen": "{{name}} hat die Karte gestohlen!",
     "discarded": "Niemand hat's geschafft — Karte verworfen",
     "sourceLibrary": "Bibliothek",
-    "sourceMusicBrainz": "MusicBrainz",
+    "sourceDiscogs": "Discogs",
     "sourceBoth": "Beide",
     "sourceManual": "Manuell",
     "songGuessCorrect": "Bonus-Token verdient!",
@@ -153,7 +153,7 @@
       "eligibleTracks": "Spielbare Titel",
       "activeGames": "Aktive Spiele",
       "lastSync": "Letzter Bibliotheks-Sync",
-      "cacheSize": "MusicBrainz-Cache-Größe",
+      "cacheSize": "Discogs-Cache-Größe",
       "resync": "Bibliothek jetzt synchronisieren"
     },
     "library": {

@@ -94,7 +94,7 @@ function OverviewTab() {
     [t("admin.overview.eligibleTracks"), stats.eligibleTracks],
     [t("admin.overview.activeGames"), stats.activeGames],
     [t("admin.overview.lastSync"), stats.lastLibrarySync ?? "—"],
-    [t("admin.overview.cacheSize"), stats.musicBrainzCacheLen],
+    [t("admin.overview.cacheSize"), stats.discogsCacheLen],
   ];
 
   return (

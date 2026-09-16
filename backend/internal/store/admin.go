@@ -14,7 +14,7 @@ type AdminTrackRow struct {
 }
 
 // SearchAdminTracks searches title/artist/album and reports override/exclusion
-// status per row, without triggering any MusicBrainz lookups (§12.3).
+// status per row, without triggering any Discogs lookups (§12.3).
 func (s *Store) SearchAdminTracks(ctx context.Context, q string, excludedFilter *bool, page, pageSize int) ([]AdminTrackRow, int, error) {
 	offset := page * pageSize
 	var excludedStr any

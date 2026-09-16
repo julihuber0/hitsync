@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// cacheEntry holds a cached MusicBrainz lookup result, including negative
+// cacheEntry holds a cached Discogs lookup result, including negative
 // results (found=false), per §9.5.
 type cacheEntry struct {
 	key       string

@@ -78,11 +78,11 @@ func (mg *ManagedGame) nextCandidate() (*Candidate, error) {
 		err  error
 	}
 	resultCh := make(chan result, 1)
-	mbCtx, cancel := context.WithTimeout(context.Background(), mg.cfg.YearLookupTimeout)
+	discogsCtx, cancel := context.WithTimeout(context.Background(), mg.cfg.YearLookupTimeout)
 	defer cancel()
 
 	go func() {
-		card, err := mg.trackSource.DrawAndResolve(context.Background(), mbCtx, exclude)
+		card, err := mg.trackSource.DrawAndResolve(context.Background(), discogsCtx, exclude)
 		resultCh <- result{card, err}
 	}()
 
@@ -90,15 +90,15 @@ func (mg *ManagedGame) nextCandidate() (*Candidate, error) {
 	case r := <-resultCh:
 		mg.ensureLookahead()
 		return r.card, r.err
-	case <-mbCtx.Done():
+	case <-discogsCtx.Done():
 		// The in-flight draw raced against excludeIDs that this turn is
 		// about to invalidate, so its eventual result is discarded rather
 		// than risking the same track being used twice. A fresh draw with
-		// the now-expired mbCtx proceeds immediately, falling back to the
-		// Navidrome year alone (resolveTrack treats the expired context as
-		// "MusicBrainz absent") so the turn is never blocked further; the
+		// the now-expired discogsCtx proceeds immediately, falling back to
+		// the Navidrome year alone (resolveTrack treats the expired context
+		// as "Discogs absent") so the turn is never blocked further; the
 		// database query itself still gets an unbounded context.
 		go func() { <-resultCh }()
-		return mg.trackSource.DrawAndResolve(context.Background(), mbCtx, exclude)
+		return mg.trackSource.DrawAndResolve(context.Background(), discogsCtx, exclude)
 	}
 }

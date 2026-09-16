@@ -26,16 +26,16 @@ func (a *API) handleAdminStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"libraryTracks":       libraryTracks,
-		"eligibleTracks":      eligibleTracks,
-		"activeGames":         len(activeGames),
-		"lastLibrarySync":     lastSync,
-		"musicBrainzCacheLen": a.resolver.CacheLen(),
+		"libraryTracks":   libraryTracks,
+		"eligibleTracks":  eligibleTracks,
+		"activeGames":     len(activeGames),
+		"lastLibrarySync": lastSync,
+		"discogsCacheLen": a.resolver.CacheLen(),
 	})
 }
 
 // handleAdminTracks implements GET /api/admin/tracks (§12.3). It never
-// triggers MusicBrainz lookups.
+// triggers Discogs lookups.
 func (a *API) handleAdminTracks(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	page, pageSize := parsePaging(r)
@@ -210,14 +210,14 @@ func (a *API) handleResolveYear(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
-	mbResult, err := a.mbClient.Resolve(ctx, tr.Title, tr.Artist)
+	dgResult, err := a.discogsClient.Resolve(ctx, tr.Title, tr.Artist)
 
-	var mbYear *int
-	var mbSource string
-	if err == nil && mbResult != nil {
-		y := mbResult.Year
-		mbYear = &y
-		mbSource = mbResult.Source
+	var dgYear *int
+	var dgSource string
+	if err == nil && dgResult != nil {
+		y := dgResult.Year
+		dgYear = &y
+		dgSource = dgResult.Source
 	}
 
 	override, _ := a.st.GetYearOverride(r.Context(), trackID)
@@ -229,9 +229,9 @@ func (a *API) handleResolveYear(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"trackId":       trackID,
 		"navidromeYear": tr.NavidromeYear,
-		"musicBrainz": map[string]any{
-			"year":   mbYear,
-			"source": mbSource,
+		"discogs": map[string]any{
+			"year":   dgYear,
+			"source": dgSource,
 			"error":  errString(err),
 		},
 		"overrideYear": overrideYear,
