@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useGameStore } from "../store/gameStore";
 import TopBar from "./TopBar";
@@ -9,7 +9,7 @@ import SongGuessPanel from "./SongGuessPanel";
 import LiveGuess from "./LiveGuess";
 import CountdownRing from "./CountdownRing";
 import { Check, RefreshCw, Volume2, Zap } from "lucide-react";
-import { Aurora, Avatar } from "./ui";
+import { activeHighlight, Aurora, Avatar } from "./ui";
 
 const CHALLENGE_WINDOW_MS = 5000;
 
@@ -31,6 +31,18 @@ export default function GameBoard() {
   const isActive = state.activePlayerId === state.youId;
   const activePlayer = state.players.find((p) => p.id === state.activePlayerId);
   const you = state.players.find((p) => p.id === state.youId);
+
+  // Bring the active player's timeline into view when a turn starts. Only on
+  // wide screens, where just the other players' panel scrolls; on phones this
+  // would move the whole page under the player's finger.
+  const activeCardRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!window.matchMedia("(min-width: 1024px)").matches) return;
+    // Browsers don't animate scrolling in background tabs; jump instead so the
+    // card is in view when the player comes back.
+    const behavior = document.visibilityState === "visible" ? "smooth" : "instant";
+    activeCardRef.current?.scrollIntoView({ behavior, block: "nearest" });
+  }, [state.activePlayerId, state.turnNumber]);
 
   // Reset per-turn local UI state whenever a new track_prepare arrives.
   useEffect(() => {
@@ -76,6 +88,7 @@ export default function GameBoard() {
     socket?.previewPlacement(slot);
   };
 
+  const turnRunning = state.phase === "PREPARING" || inPlacing || inChallenging;
   const guessFields = state.settings.guessFields;
   const guessEnabled = guessFields.title || guessFields.artist || guessFields.album || guessFields.year;
   const preparing = (state.phase === "PREPARING" || audioState === "loading") && audioState !== "error";
@@ -135,29 +148,34 @@ export default function GameBoard() {
         )}
 
         {others > 0 ? (
-          <section className="flex flex-col gap-2 lg:min-h-0 lg:flex-1">
+          <section className="flex flex-col gap-0.5 lg:min-h-0 lg:flex-1">
             <h2 className="eyebrow px-1">{t("board.otherTimelines")}</h2>
-            <div className={`grid grid-cols-[minmax(0,1fr)] content-start gap-2.5 lg:-mx-1 lg:min-h-0 lg:overflow-y-auto lg:px-1 lg:pb-3 lg:[mask-image:linear-gradient(to_bottom,black_calc(100%-14px),transparent)] ${opponentColumns}`}>
+            <div className={`grid grid-cols-[minmax(0,1fr)] content-start gap-x-2.5 gap-y-3.5 pt-2 lg:-mx-1 lg:min-h-0 lg:overflow-y-auto lg:px-1 lg:pb-3 lg:[mask-image:linear-gradient(to_bottom,black_calc(100%-14px),transparent)] ${opponentColumns}`}>
               {otherPlayers.map((player) => {
                 const isStealTarget = selectingSteal && player.id === activePlayer?.id;
                 const isActivePlayer = player.id === activePlayer?.id;
                 return (
                   <article
                     key={player.id}
-                    className={`surface flex min-w-0 flex-col rounded-2xl px-3 pt-2.5 transition-all duration-300 lg:flex-row lg:items-center lg:gap-2 lg:py-0.5 ${
-                      isStealTarget ? "border-accent/60 shadow-glow" : isActivePlayer ? "border-accent/30 bg-accent/5" : ""
+                    ref={isActivePlayer ? activeCardRef : undefined}
+                    className={`surface relative flex min-w-0 scroll-my-2 flex-col rounded-2xl px-3 pt-2.5 transition-all duration-300 lg:flex-row lg:items-center lg:gap-2 lg:py-0.5 ${
+                      isStealTarget ? "border-accent/60 shadow-glow" : ""
                     }`}
+                    style={isActivePlayer && !isStealTarget ? activeHighlight(player.colour) : undefined}
                   >
+                    {isActivePlayer && (
+                      <span
+                        className="absolute -top-2.5 right-3 z-10 flex max-w-[60%] items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-4 text-white shadow-card"
+                        style={{ backgroundColor: `color-mix(in srgb, ${player.colour} 80%, #000)` }}
+                      >
+                        <span className="h-1.5 w-1.5 shrink-0 animate-glow-pulse rounded-full bg-white" />
+                        <span className="truncate">{t("board.playerTurn", { name: player.name })}</span>
+                      </span>
+                    )}
                     <div className="flex min-w-0 items-center gap-2 lg:w-20 lg:shrink-0 lg:flex-col lg:items-start lg:gap-1">
                       <Avatar name={player.name} colour={player.colour} size={26} dimmed={!player.connected} />
                       <span className="flex min-w-0 max-w-full items-center gap-1.5 text-sm font-semibold">
                         <span className="truncate">{player.name}</span>
-                        {isActivePlayer && (
-                          <span
-                            className="h-1.5 w-1.5 shrink-0 animate-glow-pulse rounded-full bg-accent"
-                            title={t("board.playerTurn", { name: player.name })}
-                          />
-                        )}
                       </span>
                     </div>
                     <div className="min-w-0 flex-1">
@@ -231,13 +249,19 @@ export default function GameBoard() {
             </div>
           )}
 
-          <section className={`surface min-w-0 px-3 py-3 lg:px-4 ${inPlacing && isActive ? "border-accent/40 shadow-glow" : ""}`}>
+          <section
+            className="surface min-w-0 px-3 py-3 transition-all duration-300 lg:px-4"
+            style={isActive && turnRunning && you ? activeHighlight(you.colour) : undefined}
+          >
             <div className="flex items-center justify-between gap-3 px-1">
               <h2 className="text-sm font-semibold tracking-tight">{t("board.yourTimeline")}</h2>
-              {inPlacing && isActive && (
-                <span className="flex items-center gap-1.5 text-xs font-medium text-accent">
-                  <span className="h-1.5 w-1.5 animate-glow-pulse rounded-full bg-accent" />
-                  {t("board.placeCard")}
+              {isActive && turnRunning && you && (
+                <span
+                  className="flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
+                  style={{ backgroundColor: `color-mix(in srgb, ${you.colour} 80%, #000)` }}
+                >
+                  <span className="h-1.5 w-1.5 animate-glow-pulse rounded-full bg-white" />
+                  {t(inPlacing ? "board.placeCard" : "board.yourTurn")}
                 </span>
               )}
             </div>

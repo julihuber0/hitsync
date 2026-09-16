@@ -68,3 +68,12 @@ export function Avatar({ name, colour, size = 32, dimmed = false }: { name: stri
     </span>
   );
 }
+
+/** Border, glow, and tint in a player's colour for the panel of whoever's turn it is. */
+export function activeHighlight(colour: string): CSSProperties {
+  return {
+    borderColor: `color-mix(in srgb, ${colour} 75%, transparent)`,
+    backgroundColor: `color-mix(in srgb, ${colour} 9%, rgba(255,255,255,0.03))`,
+    boxShadow: `0 0 0 1px color-mix(in srgb, ${colour} 45%, transparent), 0 12px 36px -12px color-mix(in srgb, ${colour} 70%, transparent)`,
+  };
+}

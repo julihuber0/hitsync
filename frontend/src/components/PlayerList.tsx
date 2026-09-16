@@ -2,7 +2,7 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { Crown, Circle, Coins, Layers, Plus, Minus } from "lucide-react";
 import type { PlayerView } from "../ws/protocol";
-import { Avatar } from "./ui";
+import { activeHighlight, Avatar } from "./ui";
 
 interface Props {
   players: PlayerView[];
@@ -54,8 +54,9 @@ const PlayerRow = memo(function PlayerRow({ player, isYou, isHost, isActive, var
   return (
     <li
       className={`group relative flex items-center gap-2.5 rounded-xl border px-2.5 transition-all duration-200 ${variant === "board" ? "py-1.5" : "py-2.5"} ${
-        isActive ? "border-accent/40 bg-linear-to-r from-accent/[0.14] to-accent-end/6 shadow-glow-sm" : "border-transparent bg-white/3 hover:bg-white/5"
+        isActive ? "" : "border-transparent bg-white/3 hover:bg-white/5"
       }`}
+      style={isActive ? activeHighlight(player.colour) : undefined}
     >
       <span
         className={`relative rounded-full ${variant === "board" && isYou ? "ring-2 ring-white/70 ring-offset-2 ring-offset-bg" : ""}`}
